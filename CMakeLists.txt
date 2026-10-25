@@ -16,15 +16,15 @@ else()
     find_package(Eigen3 REQUIRED)
     find_package(OpenMP REQUIRED)
 
-    find_package(MPI)
+    find_package(MPI REQUIRED)
     if(MPI_FOUND)
         message(STATUS "MPI found: ${MPI_CXX_COMPILER}")
         add_definitions(-DUSE_MPI)
     endif()
 
-    set(ABM_MAJOR_VERSION 7)
+    set(ABM_MAJOR_VERSION 8)
     set(ABM_MINOR_VERSION 0)
-    set(ABM_PATCH_VERSION 4)
+    set(ABM_PATCH_VERSION 0)
     set(ABM_VERSION
         ${ABM_MAJOR_VERSION}.
         ${ABM_MINOR_VERSION}.

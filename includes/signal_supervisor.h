@@ -16,6 +16,12 @@ public:
   SignalSupervisor();
   ~SignalSupervisor();
 
+  SignalSupervisor(const SignalSupervisor &) = delete;
+  SignalSupervisor &operator=(const SignalSupervisor &) = delete;
+
+  SignalSupervisor(SignalSupervisor &&) noexcept = default;
+  SignalSupervisor &operator=(SignalSupervisor &&) noexcept = default;
+
   // Register POSIX signal handlers
   static void Register();
 

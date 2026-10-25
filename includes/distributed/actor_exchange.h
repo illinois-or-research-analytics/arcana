@@ -6,6 +6,7 @@
 #include "ladybug/ladybug_db.h"
 #include "ladybug/ladybug_node_store.h"
 #include "utils.h"
+#include <mutex>
 #include <span>
 #include <vector>
 
@@ -44,6 +45,12 @@ public:
   ActorExchange();
   ~ActorExchange();
 
+  ActorExchange(const ActorExchange &) = delete;
+  ActorExchange &operator=(const ActorExchange &) = delete;
+
+  ActorExchange(ActorExchange &&other) noexcept;
+  ActorExchange &operator=(ActorExchange &&other) noexcept;
+
   // Low-alpha Remote Pre-Sampling:
   // Samples at most k unique candidate nodes from the 2-hop neighborhood of generator_nodes
   static std::vector<int32_t> RemotePreSample(
@@ -74,12 +81,19 @@ public:
                                  ladybug::LadyBugDB &db);
 
   // Queue inspection
-  size_t GetPendingRequestCount() const noexcept { return outgoing_requests_.size(); }
-  size_t GetPendingCitationCount() const noexcept { return outgoing_citations_.size(); }
+  size_t GetPendingRequestCount() const noexcept {
+    std::lock_guard<std::mutex> lock(citation_mutex_);
+    return outgoing_requests_.size();
+  }
+  size_t GetPendingCitationCount() const noexcept {
+    std::lock_guard<std::mutex> lock(citation_mutex_);
+    return outgoing_citations_.size();
+  }
 
   void Clear();
 
 private:
+  mutable std::mutex citation_mutex_;
   std::vector<RemoteCandidateRequest> outgoing_requests_;
   std::vector<RemoteCitation> outgoing_citations_;
 };

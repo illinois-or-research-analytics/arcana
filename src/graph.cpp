@@ -16,6 +16,10 @@ Graph::Graph(std::string edgelist, std::string nodelist,
 void Graph::ParseEdgelist() {
   char delimiter = Graph::GetDelimiter(this->edgelist);
   std::ifstream input_edgelist(this->edgelist);
+  if (!input_edgelist.is_open()) {
+    std::cerr << "Error: Could not open edgelist file: " << this->edgelist << std::endl;
+    throw std::runtime_error("Could not open edgelist file: " + this->edgelist);
+  }
   std::string line;
   int line_no = 0;
   while (std::getline(input_edgelist, line)) {
@@ -42,6 +46,10 @@ void Graph::ParseNodelist() {
   std::unordered_map<std::string, int> header_to_index_map =
       Graph::GetHeaderToIndexMap(delimiter, this->nodelist);
   std::ifstream input_nodelist(this->nodelist);
+  if (!input_nodelist.is_open()) {
+    std::cerr << "Error: Could not open nodelist file: " << this->nodelist << std::endl;
+    throw std::runtime_error("Could not open nodelist file: " + this->nodelist);
+  }
   std::string line;
   int line_no = 0;
   std::vector<std::pair<int, int>> node_year_vec;
@@ -267,6 +275,9 @@ int Graph::GetAuthorReputationForNode(int node) const {
 }
 
 int Graph::GetNextNumAuthors() {
+  if (this->num_authors_bag_vec.empty()) {
+    return 1;
+  }
   std::uniform_int_distribution<int> num_authors_uniform_distribution{
       0, (int)(this->num_authors_bag_vec.size() - 1)};
   pcg32 &generator = Utils::GetThreadLocalPRNG();
@@ -277,6 +288,10 @@ int Graph::GetNextNumAuthors() {
 void Graph::ReadNumAuthorsBag() {
   char delimiter = ',';
   std::ifstream out_degree_bag_stream(this->num_authors_bag);
+  if (!out_degree_bag_stream.is_open()) {
+    std::cerr << "Error: Could not open num_authors_bag file: " << this->num_authors_bag << std::endl;
+    throw std::runtime_error("Could not open num_authors_bag file: " + this->num_authors_bag);
+  }
   std::string line;
   int line_no = 0;
   while (std::getline(out_degree_bag_stream, line)) {
@@ -293,6 +308,10 @@ void Graph::ReadNumAuthorsBag() {
       this->num_authors_bag_vec.push_back(std::stoi(current_line[1]));
     }
     line_no++;
+  }
+  if (this->num_authors_bag_vec.empty()) {
+    std::cerr << "Error: num_authors_bag file is empty or formatted incorrectly: " << this->num_authors_bag << std::endl;
+    throw std::runtime_error("num_authors_bag file is empty: " + this->num_authors_bag);
   }
 }
 

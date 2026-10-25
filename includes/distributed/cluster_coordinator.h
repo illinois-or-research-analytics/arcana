@@ -20,6 +20,12 @@ public:
   ClusterCoordinator();
   ~ClusterCoordinator();
 
+  ClusterCoordinator(const ClusterCoordinator &) = delete;
+  ClusterCoordinator &operator=(const ClusterCoordinator &) = delete;
+
+  ClusterCoordinator(ClusterCoordinator &&other) noexcept;
+  ClusterCoordinator &operator=(ClusterCoordinator &&other) noexcept;
+
   // Initialize MPI runtime environment
   void Init(int &argc, char **&argv);
 

@@ -3,14 +3,24 @@
 #include "INIReader.h"
 #include "abm.h"
 #include "argparse.hpp"
+#include "distributed/cluster_coordinator.h"
 
 int main(int argc, char *argv[]) {
+  distributed::ClusterCoordinator coordinator;
+  coordinator.Init(argc, argv);
+
   argparse::ArgumentParser main_program("abm");
 
   main_program.add_description("Agent Based Modelling");
   main_program.add_argument("--config")
       .required()
-      .help(".ini Configuration fileuration file. Example provided in docs/");
+      .help(".ini Configuration file. Example provided in docs/");
+  main_program.add_argument("--storage-backend")
+      .default_value(std::string("ladybug"))
+      .help("Storage backend: ladybug or legacy");
+  main_program.add_argument("--db-path")
+      .default_value(std::string(""))
+      .help("Path to LadyBugDB storage directory");
 
   try {
     main_program.parse_args(argc, argv);
@@ -203,6 +213,26 @@ int main(int argc, char *argv[]) {
   std::string log_file = reader.Get("General", "log_file", "");
   int num_processors = reader.GetInteger("General", "num_processors", -42);
   int log_level = reader.GetInteger("General", "log_level", -41);
+
+  std::string storage_backend = reader.Get("General", "storage_backend", "ladybug");
+  std::string db_path = reader.Get("General", "db_path", "./ladybug_data");
+  bool use_distributed = reader.GetBoolean("General", "use_distributed", false);
+  int ghost_hub_threshold = reader.GetInteger("General", "ghost_hub_threshold", 100);
+  double wall_clock_limit = reader.GetReal("General", "wall_clock_limit", 0.0);
+
+  if (main_program.is_used("--storage-backend")) {
+    storage_backend = main_program.get<std::string>("--storage-backend");
+  }
+  if (main_program.is_used("--db-path") && !main_program.get<std::string>("--db-path").empty()) {
+    db_path = main_program.get<std::string>("--db-path");
+  }
+
+  if (coordinator.GetWorldSize() > 1) {
+    use_distributed = true;
+    db_path = db_path + "_rank_" + std::to_string(coordinator.GetRank());
+    log_file = log_file + "_rank_" + std::to_string(coordinator.GetRank());
+  }
+
   SimulationConfig config;
   config.edgelist = edgelist;
   config.nodelist = nodelist;
@@ -247,8 +277,15 @@ int main(int argc, char *argv[]) {
   config.log_file = log_file;
   config.num_processors = num_processors;
   config.log_level = log_level;
+  config.storage_backend = storage_backend;
+  config.db_path = db_path;
+  config.use_distributed = use_distributed;
+  config.ghost_hub_threshold = ghost_hub_threshold;
+  config.wall_clock_limit = wall_clock_limit;
 
   ABM *abm = new ABM(config);
-  abm->main();
+  abm->coordinator = std::move(coordinator);
+  int ret = abm->main();
   delete abm;
+  return ret;
 }

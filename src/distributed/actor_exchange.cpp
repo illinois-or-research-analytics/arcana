@@ -20,7 +20,23 @@ ActorExchange::~ActorExchange() {
   Clear();
 }
 
+ActorExchange::ActorExchange(ActorExchange &&other) noexcept {
+  std::lock_guard<std::mutex> lock(other.citation_mutex_);
+  outgoing_requests_ = std::move(other.outgoing_requests_);
+  outgoing_citations_ = std::move(other.outgoing_citations_);
+}
+
+ActorExchange &ActorExchange::operator=(ActorExchange &&other) noexcept {
+  if (this != &other) {
+    std::scoped_lock lock(citation_mutex_, other.citation_mutex_);
+    outgoing_requests_ = std::move(other.outgoing_requests_);
+    outgoing_citations_ = std::move(other.outgoing_citations_);
+  }
+  return *this;
+}
+
 void ActorExchange::Clear() {
+  std::lock_guard<std::mutex> lock(citation_mutex_);
   outgoing_requests_.clear();
   outgoing_citations_.clear();
 }
@@ -113,6 +129,7 @@ std::vector<int32_t> ActorExchange::RemotePreSampleFromCluster(
 void ActorExchange::QueueRequest(
     int target_rank, const std::vector<int32_t> &generator_nodes, int sample_k,
     uint16_t max_year, int my_rank) {
+  std::lock_guard<std::mutex> lock(citation_mutex_);
   outgoing_requests_.push_back(RemoteCandidateRequest{
       .requester_rank = my_rank,
       .target_rank = target_rank,
@@ -124,6 +141,7 @@ void ActorExchange::QueueRequest(
 
 void ActorExchange::QueueCitation(int target_rank, int32_t source_node,
                                   int32_t target_node, uint16_t year) {
+  std::lock_guard<std::mutex> lock(citation_mutex_);
   outgoing_citations_.push_back(RemoteCitation{
       .source_node = source_node,
       .target_node = target_node,
@@ -136,6 +154,7 @@ ActorExchange::ExchangeRequestsAndResponses(
     int my_rank, int world_size, pcg32 &rng,
     const ladybug::LadyBugBidirectionalCSR &csr,
     const ladybug::LadyBugNodeStore &node_store) {
+  std::lock_guard<std::mutex> lock(citation_mutex_);
   std::vector<RemoteCandidateResponse> responses;
 
 #if DISTRIBUTED_HAS_MPI
@@ -300,6 +319,7 @@ ActorExchange::ExchangeRequestsAndResponses(
 
 size_t ActorExchange::ExchangeAnnualCitations(int my_rank, int world_size,
                                                ladybug::LadyBugDB &db) {
+  std::lock_guard<std::mutex> lock(citation_mutex_);
   if (outgoing_citations_.empty() && world_size <= 1) {
     return 0;
   }

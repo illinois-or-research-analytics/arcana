@@ -29,6 +29,12 @@ public:
   GhostCellManager();
   ~GhostCellManager();
 
+  GhostCellManager(const GhostCellManager &) = delete;
+  GhostCellManager &operator=(const GhostCellManager &) = delete;
+
+  GhostCellManager(GhostCellManager &&) noexcept = default;
+  GhostCellManager &operator=(GhostCellManager &&) noexcept = default;
+
   // Register foundational hub nodes as ghost cells
   void RegisterHubs(const std::vector<int32_t> &hub_node_ids,
                     const ladybug::LadyBugNodeStore &node_store,

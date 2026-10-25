@@ -2,9 +2,15 @@
 #define ABM_H
 
 #include "citation_engine.h"
+#include "distributed/actor_exchange.h"
+#include "distributed/cluster_coordinator.h"
+#include "distributed/distributed_partitioner.h"
+#include "distributed/ghost_cell_manager.h"
 #include "graph.h"
+#include "ladybug/ladybug_db.h"
 #include "neighborhood_search.h"
 #include "pcg_random.hpp"
+#include "signal_supervisor.h"
 #include "structs.h"
 #include "utils.h"
 #include <Eigen/Dense>
@@ -68,6 +74,13 @@ struct SimulationConfig {
   std::string log_file;
   int num_processors;
   int log_level;
+
+  // LadyBugDB & Distributed Engine Settings
+  std::string storage_backend = "ladybug";
+  std::string db_path = "./ladybug_data";
+  bool use_distributed = false;
+  int ghost_hub_threshold = 100;
+  double wall_clock_limit = 0.0;
 };
 
 class ABM {
@@ -83,6 +96,14 @@ public:
   int initial_graph_size;
   int final_graph_size;
   std::unordered_map<int, int> planted_nodes_line_number_map;
+
+  // LadyBugDB & Distributed Engine Instances
+  ladybug::LadyBugDB db;
+  distributed::ClusterCoordinator coordinator;
+  distributed::DistributedPartitioner partitioner;
+  distributed::GhostCellManager ghost_mgr;
+  distributed::ActorExchange exchange;
+  ladybug::SignalSupervisor signal_supervisor;
 
   std::vector<int> in_degree_vec;
   std::vector<int> fitness_vec;
@@ -146,7 +167,12 @@ public:
         clonal_cartel_agent_file(config.clonal_cartel_agent_file),
         auxiliary_information_file(config.auxiliary_information_file),
         log_file(config.log_file), num_processors(config.num_processors),
-        log_level(config.log_level) {
+        log_level(config.log_level),
+        storage_backend(config.storage_backend),
+        db_path(config.db_path),
+        use_distributed(config.use_distributed),
+        ghost_hub_threshold(config.ghost_hub_threshold),
+        wall_clock_limit(config.wall_clock_limit) {
     // initial validation
     if (this->log_file == "") {
       std::cerr << "Log file is required" << std::endl;
@@ -184,6 +210,9 @@ public:
   ~ABM() {
     delete this->neighborhood_search;
     delete this->citation_engine;
+    if (this->storage_backend == "ladybug") {
+      this->db.Close();
+    }
   }
 
   int main();
@@ -604,6 +633,12 @@ protected:
   std::string log_file;
   int num_processors;
   int log_level;
+
+  std::string storage_backend;
+  std::string db_path;
+  bool use_distributed;
+  int ghost_hub_threshold;
+  double wall_clock_limit;
 
   const int fitness_alpha = -3;
   const int fitness_decay_alpha = 3;

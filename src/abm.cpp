@@ -843,6 +843,58 @@ void ABM::InitializeSimulation() {
       this->fitness_peak_value_vec, this->fitness_peak_duration_vec,
       this->num_authors_vec, this->planted_author_id_vec,
       this->planted_cluster_id_vec);
+
+  if (this->storage_backend == "ladybug") {
+    this->logger.WriteToLogFile("Initializing LadyBugDB storage engine at " + this->db_path, Log::info);
+    this->db.Open(this->db_path, ladybug::MmapMode::ReadWrite, this->final_graph_size,
+                  static_cast<size_t>(this->final_graph_size) * 50, this->author_max_lifetime);
+    this->db.CSR().SetThreadCount(this->num_processors);
+
+    if (this->start_from_checkpoint) {
+      bool ok = this->db.Recover();
+      if (!ok) {
+        this->logger.WriteToLogFile("LadyBugDB checkpoint recovery not found on disk, ingesting seed files as checkpoint", Log::info);
+        this->db.IngestSeedData(this->nodelist, this->edgelist, this->community_assignment, this->num_authors_bag, true);
+      } else {
+        this->logger.WriteToLogFile("LadyBugDB successfully recovered from checkpoint at year " + std::to_string(this->db.GetManifest().current_year), Log::info);
+      }
+    } else {
+      this->db.IngestSeedData(this->nodelist, this->edgelist, this->community_assignment, this->num_authors_bag, false);
+    }
+
+    this->db.Nodes().EnsureNodeCapacity(this->final_graph_size);
+
+    // Setup Distributed Partitioner & Ghost Cells if running under MPI
+    if (this->coordinator.IsMPIEnabled() || this->use_distributed) {
+      this->partitioner.PartitionCommunities(this->coordinator.GetWorldSize(),
+                                             this->coordinator.GetRank(),
+                                             this->db.Clusters(),
+                                             this->db.Nodes());
+      std::vector<int32_t> hub_node_ids;
+      for (size_t u = 0; u < this->db.Nodes().GetNodeCount(); ++u) {
+        if (this->db.CSR().GetInDegree(u) >= static_cast<size_t>(this->ghost_hub_threshold)) {
+          hub_node_ids.push_back(static_cast<int32_t>(u));
+        }
+      }
+      this->ghost_mgr.RegisterHubs(hub_node_ids, this->db.Nodes(), this->db.CSR());
+      this->logger.WriteToLogFile(
+          "Distributed partitioning initialized: Rank " +
+              std::to_string(this->coordinator.GetRank()) + "/" +
+              std::to_string(this->coordinator.GetWorldSize()) +
+              " with " + std::to_string(this->ghost_mgr.GetGhostCount()) + " ghost cells",
+          Log::info);
+    }
+
+    // Register Signal Supervisor
+    ladybug::SignalSupervisor::Register();
+    if (this->wall_clock_limit > 0.0) {
+      this->signal_supervisor.SetWallClockLimit(this->wall_clock_limit);
+      this->logger.WriteToLogFile(
+          "Signal supervisor active with wall clock limit: " +
+              std::to_string(this->wall_clock_limit) + " seconds",
+          Log::info);
+    }
+  }
 }
 
 void ABM::RunSimulationLoop() {
@@ -916,6 +968,10 @@ void ABM::RunSimulationLoop() {
       this->graph->SetYear(this->next_node_id, current_year);
       this->graph->SetType(this->next_node_id, Graph::NodeType::Agent);
       this->next_node_id++;
+    }
+    if (this->storage_backend == "ladybug") {
+      this->db.Nodes().EnsureNodeCapacity(this->next_node_id);
+      this->db.Nodes().SetNodeCount(this->next_node_id);
     }
     this->logger.LogTime(current_year, "Create new node ids");
     this->FillSameYearSourceNodes(same_year_source_nodes, new_nodes_vec.size());
@@ -1297,6 +1353,24 @@ void ABM::RunSimulationLoop() {
           unique_cited_nodes.insert(citations[j]);
         }
       }
+
+      if (this->storage_backend == "ladybug") {
+        for (const auto &edge : local_new_edges_vec) {
+          int citing = edge.first;
+          int cited = edge.second;
+          if (this->coordinator.IsMPIEnabled()) {
+            int target_rank = this->partitioner.GetNodeOwnerRank(cited, this->db.Nodes());
+            if (target_rank == this->coordinator.GetRank()) {
+              this->db.CSR().RecordDeltaIncomingCitation(thread_id, cited, citing);
+            } else {
+              this->exchange.QueueCitation(target_rank, citing, cited, static_cast<uint16_t>(current_year));
+            }
+          } else {
+            this->db.CSR().RecordDeltaIncomingCitation(thread_id, cited, citing);
+          }
+        }
+      }
+
       new_edges_vec.insert(new_edges_vec.end(), local_new_edges_vec.begin(),
                            local_new_edges_vec.end());
       local_prev_time = this->logger.LocalLogTime(
@@ -1351,6 +1425,54 @@ void ABM::RunSimulationLoop() {
     this->graph->ComputeAuthorReputations();
     this->UpdateGraphAttributesInitialAuthorReputations(this->graph,
                                                         new_nodes_vec);
+
+    if (this->storage_backend == "ladybug") {
+      const auto &fwd_adj = this->graph->GetForwardAdjList();
+      for (size_t i = 0; i < new_nodes_vec.size(); i++) {
+        int new_node = new_nodes_vec[i];
+        int weight_span_index = this->continuous_node_mapping[new_node] - this->initial_graph_size;
+
+        if ((size_t)new_node < fwd_adj.size()) {
+          const auto &out_edges = fwd_adj[new_node];
+          this->db.CSR().AppendNodeOutEdges(new_node, std::span<const int32_t>(
+              reinterpret_cast<const int32_t*>(out_edges.data()), out_edges.size()));
+          this->db.Nodes().SetOutDegree(new_node, static_cast<uint32_t>(out_edges.size()));
+        }
+
+        this->db.Nodes().SetYear(new_node, current_year);
+        this->db.Nodes().SetType(new_node, ladybug::NodeType::Agent);
+        this->db.Nodes().SetAuthorId(new_node, this->graph->GetAuthorId(new_node));
+        this->db.Nodes().SetClusterId(new_node, this->graph->GetCommunityAssignment(new_node));
+        this->db.Nodes().SetAssignedOutDegree(new_node, this->out_degree_vec[weight_span_index]);
+        this->db.Nodes().SetPaWeight(new_node, this->pa_weight_vec[weight_span_index]);
+        this->db.Nodes().SetFitWeight(new_node, this->fit_weight_vec[weight_span_index]);
+        this->db.Nodes().SetNumAuthorsWeight(new_node, this->num_authors_weight_vec[weight_span_index]);
+        this->db.Nodes().SetAuthorRepWeight(new_node, this->author_reputation_weight_vec[weight_span_index]);
+        this->db.Nodes().SetAlpha(new_node, this->alpha_vec[weight_span_index]);
+        this->db.Nodes().SetFitnessLagDuration(new_node, this->fitness_lag_duration_vec[weight_span_index]);
+        this->db.Nodes().SetFitnessPeakValue(new_node, this->fitness_peak_value_vec[weight_span_index]);
+        this->db.Nodes().SetFitnessPeakDuration(new_node, this->fitness_peak_duration_vec[weight_span_index]);
+        this->db.Nodes().SetSampledNeighborhoodSize(new_node, sampled_neighborhood_sizes_map[i]);
+        this->db.Nodes().SetFullyRandomCitations(new_node, fully_random_citations_map[i]);
+        this->db.Nodes().SetNumAuthors(new_node, this->num_authors_vec[this->continuous_node_mapping[new_node]]);
+        this->db.Nodes().SetInitialAuthorReputation(new_node, this->graph->GetInitialAuthorReputation(new_node));
+        if (this->planted_nodes_line_number_map.contains(weight_span_index)) {
+          this->db.Nodes().SetPlantedLineNumber(new_node, this->planted_nodes_line_number_map[weight_span_index]);
+        }
+      }
+
+      this->coordinator.SynchronizeSuperstep(current_year, this->db, this->exchange);
+      this->logger.LogTime(current_year, "Synchronize LadyBug superstep & checkpoint");
+
+      if (this->signal_supervisor.ShouldStop()) {
+        this->logger.WriteToLogFile(
+            "Signal or wall-clock threshold reached. Gracefully pausing simulation at year " +
+                std::to_string(current_year),
+            Log::info);
+        break;
+      }
+    }
+
     new_nodes_vec.clear();
     new_edges_vec.clear();
     same_year_source_nodes.clear();
@@ -1359,40 +1481,49 @@ void ABM::RunSimulationLoop() {
 
 void ABM::FinalizeSimulation() {
   this->logger.WriteToLogFile("finished sim", Log::info);
-  this->graph->WriteGraph(this->output_file);
-  this->logger.WriteToLogFile("wrote this->graph", Log::info);
 
-  this->UpdateGraphAttributesWeights(
-      this->graph, this->initial_next_node_id, this->pa_weight_vec,
-      this->fit_weight_vec, this->num_authors_weight_vec,
-      this->author_reputation_weight_vec,
-      this->final_graph_size - this->initial_graph_size);
-  this->logger.WriteToLogFile("updated weights", Log::info);
-  this->UpdateGraphAttributesOutDegrees(
-      this->graph, this->initial_next_node_id, this->out_degree_vec,
-      this->final_graph_size - this->initial_graph_size);
-  this->logger.WriteToLogFile("updated out-degrees", Log::info);
-  this->UpdateGraphAttributesAlphas(
-      this->graph, this->initial_next_node_id, this->alpha_vec,
-      this->final_graph_size - this->initial_graph_size);
-  this->logger.WriteToLogFile("updated alphas", Log::info);
-  this->UpdateGraphAttributesNumAuthors(
-      this->graph, this->continuous_node_mapping, this->num_authors_vec);
-  this->logger.WriteToLogFile("updated num authors", Log::info);
-  this->UpdateGraphAttributesPlantedNodesLineNumbers(
-      this->graph, this->initial_next_node_id,
-      this->planted_nodes_line_number_map);
-  this->logger.WriteToLogFile("updated planted nodes line numbers", Log::info);
-
-  for (auto const &node_id : this->graph->GetNodeSet()) {
-    this->graph->SetInDegree(node_id, this->graph->GetInDegree(node_id));
-    this->graph->SetOutDegree(node_id, this->graph->GetOutDegree(node_id));
+  if (this->storage_backend == "ladybug") {
+    this->coordinator.Barrier();
+    this->db.Sync(false);
+    this->logger.WriteToLogFile("LadyBugDB storage engine synchronized", Log::info);
   }
-  this->logger.WriteToLogFile("computed in-degree and out-degrees", Log::info);
-  this->graph->ComputeAuthorReputations();
-  this->logger.WriteToLogFile("computed author reputations", Log::info);
-  this->graph->WriteAttributes(this->auxiliary_information_file);
-  this->logger.WriteToLogFile("wrote nodelist", Log::info);
+
+  if (this->coordinator.IsMaster()) {
+    this->graph->WriteGraph(this->output_file);
+    this->logger.WriteToLogFile("wrote this->graph", Log::info);
+
+    this->UpdateGraphAttributesWeights(
+        this->graph, this->initial_next_node_id, this->pa_weight_vec,
+        this->fit_weight_vec, this->num_authors_weight_vec,
+        this->author_reputation_weight_vec,
+        this->final_graph_size - this->initial_graph_size);
+    this->logger.WriteToLogFile("updated weights", Log::info);
+    this->UpdateGraphAttributesOutDegrees(
+        this->graph, this->initial_next_node_id, this->out_degree_vec,
+        this->final_graph_size - this->initial_graph_size);
+    this->logger.WriteToLogFile("updated out-degrees", Log::info);
+    this->UpdateGraphAttributesAlphas(
+        this->graph, this->initial_next_node_id, this->alpha_vec,
+        this->final_graph_size - this->initial_graph_size);
+    this->logger.WriteToLogFile("updated alphas", Log::info);
+    this->UpdateGraphAttributesNumAuthors(
+        this->graph, this->continuous_node_mapping, this->num_authors_vec);
+    this->logger.WriteToLogFile("updated num authors", Log::info);
+    this->UpdateGraphAttributesPlantedNodesLineNumbers(
+        this->graph, this->initial_next_node_id,
+        this->planted_nodes_line_number_map);
+    this->logger.WriteToLogFile("updated planted nodes line numbers", Log::info);
+
+    for (auto const &node_id : this->graph->GetNodeSet()) {
+      this->graph->SetInDegree(node_id, this->graph->GetInDegree(node_id));
+      this->graph->SetOutDegree(node_id, this->graph->GetOutDegree(node_id));
+    }
+    this->logger.WriteToLogFile("computed in-degree and out-degrees", Log::info);
+    this->graph->ComputeAuthorReputations();
+    this->logger.WriteToLogFile("computed author reputations", Log::info);
+    this->graph->WriteAttributes(this->auxiliary_information_file);
+    this->logger.WriteToLogFile("wrote nodelist", Log::info);
+  }
   delete this->graph;
 }
 

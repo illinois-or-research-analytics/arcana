@@ -17,6 +17,32 @@ ClusterCoordinator::~ClusterCoordinator() {
   Finalize();
 }
 
+ClusterCoordinator::ClusterCoordinator(ClusterCoordinator &&other) noexcept
+    : rank_(other.rank_),
+      world_size_(other.world_size_),
+      mpi_enabled_(other.mpi_enabled_),
+      initialized_by_me_(other.initialized_by_me_) {
+  other.initialized_by_me_ = false;
+  other.rank_ = 0;
+  other.world_size_ = 1;
+  other.mpi_enabled_ = false;
+}
+
+ClusterCoordinator &ClusterCoordinator::operator=(ClusterCoordinator &&other) noexcept {
+  if (this != &other) {
+    Finalize();
+    rank_ = other.rank_;
+    world_size_ = other.world_size_;
+    mpi_enabled_ = other.mpi_enabled_;
+    initialized_by_me_ = other.initialized_by_me_;
+    other.initialized_by_me_ = false;
+    other.rank_ = 0;
+    other.world_size_ = 1;
+    other.mpi_enabled_ = false;
+  }
+  return *this;
+}
+
 void ClusterCoordinator::Init(int &argc, char **&argv) {
   // TODO: Step 1 - Initialize MPI Runtime Environment
   // 1. Set environment variables for fallback transport (e.g., TCP / shared memory)
@@ -29,27 +55,34 @@ void ClusterCoordinator::Init(int &argc, char **&argv) {
   //    - MPI_Comm_size(MPI_COMM_WORLD, &world_size_);
   // 5. mpi_enabled_ = (world_size_ > 1);
 #if DISTRIBUTED_HAS_MPI
-  setenv("OMPI_MCA_pml", "ob1", 0);
-  setenv("OMPI_MCA_btl", "self,vader,tcp", 0);
+  setenv("OMPI_MCA_pml", "ob1", 1);
+  setenv("OMPI_MCA_btl", "self,vader,tcp", 1);
+  setenv("UCX_TLS", "sm,self,tcp", 1);
+  setenv("UCX_NET_DEVICES", "all", 1);
+
+  bool in_mpi_env = (getenv("OMPI_COMM_WORLD_SIZE") != nullptr ||
+                     getenv("PMIX_RANK") != nullptr ||
+                     getenv("SLURM_PROCID") != nullptr ||
+                     getenv("MPI_LOCALRANKID") != nullptr);
 
   int flag = 0;
   MPI_Initialized(&flag);
-  if (!flag) {
-    int provided = 0;
-    MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided);
-    initialized_by_me_ = true;
+  if (flag || in_mpi_env) {
+    if (!flag) {
+      int provided = 0;
+      MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided);
+      initialized_by_me_ = true;
+    }
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank_);
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size_);
+    mpi_enabled_ = (world_size_ > 1);
+    return;
   }
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank_);
-  MPI_Comm_size(MPI_COMM_WORLD, &world_size_);
-  mpi_enabled_ = (world_size_ > 1);
-#else
-  (void)argc;
-  (void)argv;
+#endif
   rank_ = 0;
   world_size_ = 1;
   mpi_enabled_ = false;
   initialized_by_me_ = false;
-#endif
 }
 
 void ClusterCoordinator::Finalize() {

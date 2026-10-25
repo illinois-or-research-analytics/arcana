@@ -65,6 +65,10 @@ std::vector<int> Utils::ParseOutDegreeBag(std::string_view filepath) {
   std::vector<int> vec;
   char delimiter = ',';
   std::ifstream out_degree_bag_stream{std::string(filepath)};
+  if (!out_degree_bag_stream.is_open()) {
+    std::cerr << "Error: Could not open out_degree_bag file: " << filepath << std::endl;
+    throw std::runtime_error("Could not open out_degree_bag file: " + std::string(filepath));
+  }
   std::string line;
   int line_no = 0;
   while (std::getline(out_degree_bag_stream, line)) {

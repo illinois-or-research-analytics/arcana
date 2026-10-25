@@ -22,6 +22,12 @@ public:
   DistributedPartitioner();
   ~DistributedPartitioner();
 
+  DistributedPartitioner(const DistributedPartitioner &) = delete;
+  DistributedPartitioner &operator=(const DistributedPartitioner &) = delete;
+
+  DistributedPartitioner(DistributedPartitioner &&) noexcept = default;
+  DistributedPartitioner &operator=(DistributedPartitioner &&) noexcept = default;
+
   // Partition Leiden clusters across world_size ranks to balance node counts
   void PartitionCommunities(int world_size, int my_rank,
                             const ladybug::LadyBugClusterIndex &cluster_index,
