@@ -191,6 +191,22 @@ int main(int argc, char *argv[]) {
   double author_reputation_exponent =
       reader.GetReal("Agent", "author_reputation_exponent", score_exponent);
   double score_offset = reader.GetReal("Agent", "score_offset", 1);
+  // Optional: how in-degree and fitness criteria combine for non-random generator eligibility.
+  // "and" (default) = both; "or" = either.
+  std::string generator_eligibility =
+      reader.Get("Agent", "generator_eligibility", "and");
+  if (generator_eligibility == "") {
+    generator_eligibility = "and";
+  }
+  // Optional: restrict generators to agents. "all" (default), "agents_eligible", or "agents".
+  std::string generator_pool = reader.Get("Agent", "generator_pool", "all");
+  if (generator_pool == "") {
+    generator_pool = "all";
+  }
+  // Optional: with an agents-only pool, seeds are removed from the eligible set once agents are at least
+  // this share of it.
+  double generator_pool_min_agent_share =
+      reader.GetReal("Agent", "generator_pool_min_agent_share", 0.1);
   std::string start_from_checkpoint_string =
       reader.Get("Environment", "start_from_checkpoint", "");
   bool start_from_checkpoint = false;
@@ -249,6 +265,9 @@ int main(int argc, char *argv[]) {
   config.num_authors_exponent = num_authors_exponent;
   config.author_reputation_exponent = author_reputation_exponent;
   config.score_offset = score_offset;
+  config.generator_eligibility = generator_eligibility;
+  config.generator_pool = generator_pool;
+  config.generator_pool_min_agent_share = generator_pool_min_agent_share;
   config.growth_rate = growth_rate;
   config.num_cycles = num_cycles;
   config.same_year_citations = same_year_citations;

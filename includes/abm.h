@@ -60,6 +60,12 @@ struct SimulationConfig {
   double num_authors_exponent;
   double author_reputation_exponent;
   double score_offset;
+  // non-random generator eligibility: "and" = top in-degree AND top fitness, "or" = either
+  std::string generator_eligibility;
+  // which nodes may be generators: "all", "agents_eligible" (non-random generators must be agents), "agents" (all generators)
+  std::string generator_pool;
+  // agents-only filtering of the eligible set applies once agents are at least this share of it
+  double generator_pool_min_agent_share;
   double growth_rate;
   int num_cycles;
   double same_year_citations;
@@ -144,7 +150,11 @@ public:
         fitness_exponent(config.fitness_exponent),
         num_authors_exponent(config.num_authors_exponent),
         author_reputation_exponent(config.author_reputation_exponent),
-        score_offset(config.score_offset), growth_rate(config.growth_rate),
+        score_offset(config.score_offset),
+        generator_eligibility(config.generator_eligibility),
+        generator_pool(config.generator_pool),
+        generator_pool_min_agent_share(config.generator_pool_min_agent_share),
+        growth_rate(config.growth_rate),
         num_cycles(config.num_cycles),
         same_year_citations(config.same_year_citations),
         neighborhood_sample(config.neighborhood_sample),
@@ -605,6 +615,12 @@ protected:
   double num_authors_exponent;
   double author_reputation_exponent;
   double score_offset;
+  // non-random generator eligibility: "and" = top in-degree AND top fitness, "or" = either
+  std::string generator_eligibility;
+  // which nodes may be generators: "all", "agents_eligible" (non-random generators must be agents), "agents" (all generators)
+  std::string generator_pool;
+  // agents-only filtering of the eligible set applies once agents are at least this share of it
+  double generator_pool_min_agent_share;
   double growth_rate;
   int num_cycles;
   double same_year_citations;
