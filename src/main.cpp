@@ -180,6 +180,17 @@ int main(int argc, char *argv[]) {
   double non_random_generator_probability =
       reader.GetReal("Agent", "non_random_generator_probability", -42);
   int theta = reader.GetInteger("Agent", "theta", -42);
+  // Optional score exponents: score(x) = max(x^exponent, 1) + score_offset. score_exponent sets all four;
+  // a per-score key overrides it. Defaults (3 and 1) reproduce the previous constants.
+  double score_exponent = reader.GetReal("Agent", "score_exponent", 3);
+  double pa_exponent = reader.GetReal("Agent", "pa_exponent", score_exponent);
+  double fitness_exponent =
+      reader.GetReal("Agent", "fitness_exponent", score_exponent);
+  double num_authors_exponent =
+      reader.GetReal("Agent", "num_authors_exponent", score_exponent);
+  double author_reputation_exponent =
+      reader.GetReal("Agent", "author_reputation_exponent", score_exponent);
+  double score_offset = reader.GetReal("Agent", "score_offset", 1);
   std::string start_from_checkpoint_string =
       reader.Get("Environment", "start_from_checkpoint", "");
   bool start_from_checkpoint = false;
@@ -233,6 +244,11 @@ int main(int argc, char *argv[]) {
   config.recency_threshold = recency_threshold;
   config.non_random_generator_probability = non_random_generator_probability;
   config.theta = theta;
+  config.pa_exponent = pa_exponent;
+  config.fitness_exponent = fitness_exponent;
+  config.num_authors_exponent = num_authors_exponent;
+  config.author_reputation_exponent = author_reputation_exponent;
+  config.score_offset = score_offset;
   config.growth_rate = growth_rate;
   config.num_cycles = num_cycles;
   config.same_year_citations = same_year_citations;

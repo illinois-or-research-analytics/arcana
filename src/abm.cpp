@@ -651,6 +651,31 @@ bool ABM::ValidateArguments() {
                               this->non_random_generator_probability, -42)) {
     return false;
   }
+  const std::vector<std::pair<std::string, double>> score_exponents = {
+      {"pa_exponent", this->pa_exponent},
+      {"fitness_exponent", this->fitness_exponent},
+      {"num_authors_exponent", this->num_authors_exponent},
+      {"author_reputation_exponent", this->author_reputation_exponent}};
+  for (auto const &[exponent_name, exponent_value] : score_exponents) {
+    // upper bound keeps x^exponent finite in double precision for in-degrees/fitness values seen in practice
+    if (exponent_value < 0 || exponent_value > 10) {
+      this->logger.WriteToLogFile("'" + exponent_name +
+                                      "' must be between 0 and 10 but was " +
+                                      std::to_string(exponent_value),
+                                  Log::error);
+      return false;
+    }
+    this->logger.WriteToLogFile(
+        exponent_name + ": " + std::to_string(exponent_value), Log::info);
+  }
+  if (this->score_offset < 0) {
+    this->logger.WriteToLogFile("'score_offset' must be non-negative but was " +
+                                    std::to_string(this->score_offset),
+                                Log::error);
+    return false;
+  }
+  this->logger.WriteToLogFile(
+      "score_offset: " + std::to_string(this->score_offset), Log::info);
   if (this->null_cartel) {
     this->logger.WriteToLogFile("Using a null cartel model", Log::info);
   } else {
@@ -819,7 +844,8 @@ void ABM::RunSimulationLoop() {
   std::set<int> same_year_source_nodes;
   std::unordered_map<int, double> exp_cached_results;
   for (int i = 0; i < 1000; i++) {
-    exp_cached_results[i] = std::max(pow(i, this->gamma), 1.0) + 1;
+    exp_cached_results[i] =
+        std::max(pow(i, this->pa_exponent), 1.0) + this->score_offset;
   }
   std::unordered_map<int, double> binned_recency_probabilities =
       GetBinnedRecencyProbabilities();
@@ -848,20 +874,20 @@ void ABM::RunSimulationLoop() {
         exp_cached_results,
         std::span<int>{this->in_degree_vec.data(), (size_t)current_graph_size},
         std::span<double>{this->pa_vec.data(), (size_t)current_graph_size},
-        this->gamma);
+        this->pa_exponent, this->score_offset);
     this->logger.LogTime(current_year, "Process in-degree array");
     MetricsEngine::CalculateExpScores(
         exp_cached_results,
         std::span<int>{this->fitness_vec.data(), (size_t)current_graph_size},
         std::span<double>{this->fit_vec.data(), (size_t)current_graph_size},
-        this->gamma);
+        this->fitness_exponent, this->score_offset);
     this->logger.LogTime(current_year, "Process fitness array");
     MetricsEngine::CalculateExpScores(
         exp_cached_results,
         std::span<int>{this->num_authors_vec.data(),
                        (size_t)current_graph_size},
         std::span<double>{this->na_vec.data(), (size_t)current_graph_size},
-        this->gamma);
+        this->num_authors_exponent, this->score_offset);
     this->logger.LogTime(current_year, "Process num authors array");
 
     /* initialize new nodes */
@@ -1000,7 +1026,7 @@ void ABM::RunSimulationLoop() {
         std::span<int>{this->author_reputation_vec.data(),
                        (size_t)current_graph_size},
         std::span<double>{this->ar_vec.data(), (size_t)current_graph_size},
-        this->gamma);
+        this->author_reputation_exponent, this->score_offset);
     this->logger.LogTime(current_year, "Process author reputation array");
 
     std::vector<int> sampled_neighborhood_sizes_map(new_nodes_vec.size());
