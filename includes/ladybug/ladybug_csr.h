@@ -99,6 +99,11 @@ public:
   // Ingest seed edgelist CSV into bidirectional CSR
   void IngestCSV(const std::string &edgelist_csv, size_t total_nodes);
 
+  // Directly construct from pre-loaded adjacency lists in memory
+  void BuildFromAdjLists(size_t n_nodes,
+                         const std::vector<std::vector<int>> &fwd_adj,
+                         const std::vector<std::vector<int>> &bwd_adj);
+
   // Export to CSV
   void ExportCSV(const std::string &output_csv) const;
 

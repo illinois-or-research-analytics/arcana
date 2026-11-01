@@ -20,6 +20,7 @@ class Graph {
 public:
   enum class NodeType { None, Seed, Agent };
   struct NodeAttributes {
+    bool is_valid = false;
     int year = -1;
     double alpha = -1.0;
     double pa_weight = -1.0;
@@ -103,9 +104,9 @@ public:
     return header_to_index_map;
   }
 
-  const std::set<int> &GetNodeSet() const;
-  const std::vector<std::vector<int>> &GetForwardAdjList() const;
-  const std::vector<std::vector<int>> &GetBackwardAdjList() const;
+  inline const std::set<int> &GetNodeSet() const { return node_set; }
+  inline const std::vector<std::vector<int>> &GetForwardAdjList() const { return forward_adj_list; }
+  inline const std::vector<std::vector<int>> &GetBackwardAdjList() const { return backward_adj_list; }
   /*
   Input: None
   Output: void
@@ -134,6 +135,20 @@ public:
   to compute a real-time reputation score.
   */
   void ComputeAuthorReputations();
+  int ComputeSingleAuthorReputation(int author_id);
+  inline bool IsNodeValid(int node) const {
+    return static_cast<size_t>(node) < node_attributes.size() && node_attributes[node].is_valid;
+  }
+  int GetNextAuthorId() const noexcept { return next_author_id; }
+  const std::unordered_map<int, int> &GetAuthorBirthYearMap() const noexcept {
+    return author_birth_year_map;
+  }
+  const std::unordered_map<int, std::vector<int>> &GetAuthorPublicationMap() const noexcept {
+    return author_publication_map;
+  }
+  const std::unordered_map<int, std::vector<int>> &GetPublicationCountToAuthorMap() const noexcept {
+    return publication_count_to_author_map;
+  }
   /*
   Input: int node
   Output: int
@@ -141,6 +156,11 @@ public:
   aggregated reputation score.
   */
   int GetAuthorReputationForNode(int node) const;
+  inline void SetAuthorBirthYear(int author_id, int year) {
+    if (!author_birth_year_map.contains(author_id)) {
+      author_birth_year_map[author_id] = year;
+    }
+  }
   /*
   Input: int u
   Output: void

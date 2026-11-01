@@ -1,4 +1,5 @@
 #include "ladybug/ladybug_db.h"
+#include "graph.h"
 #include "utils.h"
 #include <chrono>
 #include <filesystem>
@@ -145,7 +146,9 @@ void LadyBugDB::IngestSeedData(const std::string &nodelist_csv,
     std::vector<std::pair<int, int>> node_years;
     node_years.reserve(node_store_.GetNodeCount());
     for (size_t u = 0; u < node_store_.GetNodeCount(); ++u) {
-      node_years.push_back({static_cast<int>(u), node_store_.GetYear(u)});
+      if (node_store_.GetType(u) == NodeType::Seed) {
+        node_years.push_back({static_cast<int>(u), node_store_.GetYear(u)});
+      }
     }
     std::sort(node_years.begin(), node_years.end(),
               [](const std::pair<int, int> &a, const std::pair<int, int> &b) {
@@ -163,11 +166,10 @@ void LadyBugDB::IngestSeedData(const std::string &nodelist_csv,
       author_store_.UpdateAuthorPublication(author_id, u);
 
       if (prev_yr != yr) {
-        author_store_.ComputeAuthorReputations(node_store_);
         for (size_t j = prev_idx; j < i; ++j) {
           int n = node_years[j].first;
           int auth = node_store_.GetAuthorId(n);
-          node_store_.SetInitialAuthorReputation(n, author_store_.GetAuthorReputation(auth));
+          node_store_.SetInitialAuthorReputation(n, author_store_.ComputeSingleAuthorReputation(auth, node_store_));
         }
         prev_idx = i;
         prev_yr = yr;
@@ -175,11 +177,10 @@ void LadyBugDB::IngestSeedData(const std::string &nodelist_csv,
     }
 
     if (prev_idx < node_years.size()) {
-      author_store_.ComputeAuthorReputations(node_store_);
       for (size_t j = prev_idx; j < node_years.size(); ++j) {
         int n = node_years[j].first;
         int auth = node_store_.GetAuthorId(n);
-        node_store_.SetInitialAuthorReputation(n, author_store_.GetAuthorReputation(auth));
+        node_store_.SetInitialAuthorReputation(n, author_store_.ComputeSingleAuthorReputation(auth, node_store_));
       }
     }
   } else {
@@ -205,6 +206,67 @@ void LadyBugDB::IngestSeedData(const std::string &nodelist_csv,
   manifest_.last_commit_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
                                         std::chrono::system_clock::now().time_since_epoch())
                                         .count();
+
+  Sync(false);
+  SaveManifest();
+}
+
+void LadyBugDB::IngestFromGraph(const ::Graph &graph) {
+  size_t n_nodes = 0;
+  for (int u : graph.GetNodeSet()) {
+    if (static_cast<size_t>(u) >= n_nodes) {
+      n_nodes = static_cast<size_t>(u) + 1;
+    }
+  }
+
+  node_store_.SetNodeCount(n_nodes);
+
+  // 1. Populate NodeStore & Clusters
+  for (int u : graph.GetNodeSet()) {
+    node_store_.SetYear(u, graph.GetYear(u));
+    node_store_.SetType(u, static_cast<NodeType>(graph.GetType(u)));
+    node_store_.SetAlpha(u, graph.GetAlpha(u));
+    node_store_.SetPaWeight(u, graph.GetPaWeight(u));
+    node_store_.SetFitWeight(u, graph.GetFitWeight(u));
+    node_store_.SetNumAuthorsWeight(u, graph.GetNumAuthorsWeight(u));
+    node_store_.SetAuthorRepWeight(u, graph.GetAuthorReputationWeight(u));
+    node_store_.SetFitnessLagDuration(u, graph.GetFitnessLagDuration(u));
+    node_store_.SetFitnessPeakValue(u, graph.GetFitnessPeakValue(u));
+    node_store_.SetFitnessPeakDuration(u, graph.GetFitnessPeakDuration(u));
+    node_store_.SetInDegree(u, graph.GetInDegree(u));
+    node_store_.SetOutDegree(u, graph.GetOutDegree(u));
+    node_store_.SetAssignedOutDegree(u, graph.GetAssignedOutDegree(u));
+    node_store_.SetPlantedLineNumber(u, graph.GetPlantedNodesLineNumber(u));
+    node_store_.SetSampledNeighborhoodSize(u, graph.GetSampledNeighborhoodSize(u));
+    node_store_.SetFullyRandomCitations(u, graph.GetFullyRandomCitations(u));
+    node_store_.SetAuthorId(u, graph.GetAuthorId(u));
+    node_store_.SetNumAuthors(u, graph.GetNumAuthors(u));
+    node_store_.SetInitialAuthorReputation(u, graph.GetInitialAuthorReputation(u));
+    node_store_.SetCartelId(u, graph.GetCartelIdAttr(u));
+    int cid = graph.GetCommunityAssignment(u);
+    node_store_.SetClusterId(u, cid);
+    if (cid >= 0) {
+      cluster_index_.AddNodeToCluster(u, cid);
+    }
+  }
+
+  // 2. Build Bidirectional CSR directly from in-memory adjacency lists
+  csr_.BuildFromAdjLists(n_nodes, graph.GetForwardAdjList(), graph.GetBackwardAdjList());
+
+  // 3. Sync Author Store
+  author_store_.SetNextAuthorId(graph.GetNextAuthorId());
+  author_store_.SetAuthorBirthYearMap(graph.GetAuthorBirthYearMap());
+  author_store_.SetAuthorPublicationMap(graph.GetAuthorPublicationMap());
+  author_store_.SetPublicationCountToAuthorMap(graph.GetPublicationCountToAuthorMap());
+
+  // 4. Update Manifest
+  manifest_.node_count = node_store_.GetNodeCount();
+  manifest_.edge_count = csr_.GetEdgeCount();
+  manifest_.next_author_id = author_store_.GetNextAuthorId();
+  manifest_.last_commit_timestamp =
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::system_clock::now().time_since_epoch())
+          .count();
 
   Sync(false);
   SaveManifest();

@@ -35,7 +35,18 @@ public:
   int GetAuthorBirthYear(int author_id) const;
 
   void ComputeAuthorReputations(const LadyBugNodeStore &node_store);
+  int ComputeSingleAuthorReputation(int author_id, const LadyBugNodeStore &node_store);
   int GetAuthorReputation(int author_id) const;
+
+  void SetAuthorPublicationMap(std::unordered_map<int, std::vector<int>> map) {
+    author_publication_map_ = std::move(map);
+  }
+  void SetAuthorBirthYearMap(std::unordered_map<int, int> map) {
+    author_birth_year_map_ = std::move(map);
+  }
+  void SetPublicationCountToAuthorMap(std::unordered_map<int, std::vector<int>> map) {
+    publication_count_to_author_map_ = std::move(map);
+  }
 
   // Cartel operations
   void SetCartelID(int author_id, int cartel_id);

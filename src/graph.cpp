@@ -1,5 +1,7 @@
 #include "graph.h"
 #include "utils.h"
+#include <charconv>
+#include <string_view>
 
 Graph::Graph(std::string edgelist, std::string nodelist,
              bool start_from_checkpoint, std::string num_authors_bag,
@@ -23,18 +25,15 @@ void Graph::ParseEdgelist() {
   std::string line;
   int line_no = 0;
   while (std::getline(input_edgelist, line)) {
-    std::stringstream ss(line);
-    std::string current_value;
-    std::vector<std::string> current_line;
-    while (std::getline(ss, current_value, delimiter)) {
-      current_line.push_back(current_value);
-    }
-    if (current_line.size() == 0) {
-      break;
-    }
+    if (line.empty()) continue;
     if (line_no != 0) {
-      int integer_citing = std::stoi(current_line[0]);
-      int integer_cited = std::stoi(current_line[1]);
+      const char *p = line.c_str();
+      char *end = nullptr;
+      int integer_citing = static_cast<int>(std::strtol(p, &end, 10));
+      while (*end == delimiter || *end == ' ' || *end == '\t' || *end == '\r') {
+        end++;
+      }
+      int integer_cited = static_cast<int>(std::strtol(end, nullptr, 10));
       this->AddEdge({integer_citing, integer_cited});
     }
     line_no++;
@@ -50,99 +49,153 @@ void Graph::ParseNodelist() {
     std::cerr << "Error: Could not open nodelist file: " << this->nodelist << std::endl;
     throw std::runtime_error("Could not open nodelist file: " + this->nodelist);
   }
+
+  auto get_col = [&](const std::string &col) -> int {
+    auto it = header_to_index_map.find(col);
+    return it != header_to_index_map.end() ? it->second : -1;
+  };
+  int node_id_idx = get_col("node_id");
+  int year_idx = get_col("year");
+  int type_idx = get_col("type");
+  int alpha_idx = get_col("alpha");
+  int pa_weight_idx = get_col("pa_weight");
+  int fit_weight_idx = get_col("fit_weight");
+  int fit_lag_idx = get_col("fit_lag_duration");
+  int fit_peak_val_idx = get_col("fit_peak_value");
+  int fit_peak_dur_idx = get_col("fit_peak_duration");
+  int assigned_out_deg_idx = get_col("assigned_out_degree");
+  int planted_nodes_line_idx = get_col("planted_nodes_line_number");
+  int sampled_nbr_idx = get_col("sampled_neighborhood_size");
+  int gen_node_str_idx = get_col("generator_node_string");
+  int fully_rand_idx = get_col("fully_random_citations");
+  int author_idx = get_col("author_id");
+  int init_author_rep_idx = get_col("initial_author_reputation");
+  int num_authors_idx = get_col("num_authors");
+  int cartel_id_idx = get_col("cartel_id");
+  int cluster_id_idx = get_col("cluster_id");
+
   std::string line;
   int line_no = 0;
   std::vector<std::pair<int, int>> node_year_vec;
+  std::vector<std::string_view> current_line;
+  current_line.reserve(32);
+
+  auto split_line = [&](std::string_view s) {
+    current_line.clear();
+    size_t start = 0;
+    while (start < s.size()) {
+      size_t end = s.find(delimiter, start);
+      if (end == std::string_view::npos) {
+        std::string_view tok = s.substr(start);
+        if (!tok.empty() && tok.back() == '\r') tok.remove_suffix(1);
+        current_line.push_back(tok);
+        break;
+      }
+      std::string_view tok = s.substr(start, end - start);
+      if (!tok.empty() && tok.back() == '\r') tok.remove_suffix(1);
+      current_line.push_back(tok);
+      start = end + 1;
+    }
+  };
+
+  auto parse_int = [](std::string_view sv) -> int {
+    int val = 0;
+    std::from_chars(sv.data(), sv.data() + sv.size(), val);
+    return val;
+  };
+  auto parse_double = [](std::string_view sv) -> double {
+    return std::stod(std::string(sv));
+  };
+
   while (std::getline(input_nodelist, line)) {
-    std::stringstream ss(line);
-    std::string current_value;
-    std::vector<std::string> current_line;
-    while (std::getline(ss, current_value, delimiter)) {
-      current_line.push_back(current_value);
-    }
-    if (current_line.size() == 0) {
-      break;
-    }
+    if (line.empty()) continue;
     if (line_no != 0) {
-      int integer_node =
-          std::stoi(current_line[header_to_index_map["node_id"]]);
-      int integer_year = std::stoi(current_line[header_to_index_map["year"]]);
+      split_line(line);
+      if (current_line.empty()) break;
+      if (node_id_idx < 0 || static_cast<size_t>(node_id_idx) >= current_line.size()) continue;
+
+      int integer_node = parse_int(current_line[node_id_idx]);
+      int integer_year = (year_idx >= 0 && static_cast<size_t>(year_idx) < current_line.size())
+                             ? parse_int(current_line[year_idx]) : 0;
       this->SetYear(integer_node, integer_year);
       node_year_vec.push_back({integer_node, integer_year});
+
       if (this->start_from_checkpoint) {
-        std::string type_string = current_line[header_to_index_map["type"]];
-        this->SetType(integer_node,
-                      type_string == "seed" ? NodeType::Seed : NodeType::Agent);
-        double alpha = std::stod(current_line[header_to_index_map["alpha"]]);
-        this->SetAlpha(integer_node, alpha);
-        double pa_weight =
-            std::stod(current_line[header_to_index_map["pa_weight"]]);
-        this->SetPaWeight(integer_node, pa_weight);
-        double fit_weight =
-            std::stod(current_line[header_to_index_map["fit_weight"]]);
-        this->SetFitWeight(integer_node, fit_weight);
-        int fit_lag_duration =
-            std::stoi(current_line[header_to_index_map["fit_lag_duration"]]);
-        this->SetFitnessLagDuration(integer_node, fit_lag_duration);
-        int fit_peak_value =
-            std::stoi(current_line[header_to_index_map["fit_peak_value"]]);
-        this->SetFitnessPeakValue(integer_node, fit_peak_value);
-        int fit_peak_duration =
-            std::stoi(current_line[header_to_index_map["fit_peak_duration"]]);
-        this->SetFitnessPeakDuration(integer_node, fit_peak_duration);
-        int assigned_out_degree =
-            std::stoi(current_line[header_to_index_map["assigned_out_degree"]]);
-        this->SetAssignedOutDegree(integer_node, assigned_out_degree);
-        int planted_nodes_line_number = std::stoi(
-            current_line[header_to_index_map["planted_nodes_line_number"]]);
-        this->SetPlantedNodesLineNumber(integer_node,
-                                        planted_nodes_line_number);
-        int sampled_neighborhood_size = std::stoi(
-            current_line[header_to_index_map["sampled_neighborhood_size"]]);
-        this->SetSampledNeighborhoodSize(integer_node,
-                                         sampled_neighborhood_size);
-        std::string generator_node_string =
-            current_line[header_to_index_map["generator_node_string"]];
-        this->SetGeneratorNodeString(integer_node, generator_node_string);
-        int fully_random_citations = std::stoi(
-            current_line[header_to_index_map["fully_random_citations"]]);
-        this->SetFullyRandomCitations(integer_node, fully_random_citations);
-        int author = std::stoi(current_line[header_to_index_map["author_id"]]);
-        this->SetAuthorId(integer_node, author);
-        int initial_author_reputation = std::stoi(
-            current_line[header_to_index_map["initial_author_reputation"]]);
-        this->SetInitialAuthorReputation(integer_node,
-                                         initial_author_reputation);
-        int num_authors =
-            std::stoi(current_line[header_to_index_map["num_authors"]]);
-        this->SetNumAuthors(integer_node, num_authors);
-        int cartel_id =
-            std::stoi(current_line[header_to_index_map["cartel_id"]]);
-        if (cartel_id != -1) {
-          this->SetCartelIdAttr(integer_node, cartel_id);
-          this->cartel_set.insert(cartel_id);
-          this->SetCartelID(author, cartel_id);
+        if (type_idx >= 0 && static_cast<size_t>(type_idx) < current_line.size()) {
+          this->SetType(integer_node, current_line[type_idx] == "seed" ? NodeType::Seed : NodeType::Agent);
         }
-        if (header_to_index_map.contains("cluster_id")) {
-          int cluster_id =
-              std::stoi(current_line[header_to_index_map["cluster_id"]]);
+        if (alpha_idx >= 0 && static_cast<size_t>(alpha_idx) < current_line.size()) {
+          this->SetAlpha(integer_node, parse_double(current_line[alpha_idx]));
+        }
+        if (pa_weight_idx >= 0 && static_cast<size_t>(pa_weight_idx) < current_line.size()) {
+          this->SetPaWeight(integer_node, parse_double(current_line[pa_weight_idx]));
+        }
+        if (fit_weight_idx >= 0 && static_cast<size_t>(fit_weight_idx) < current_line.size()) {
+          this->SetFitWeight(integer_node, parse_double(current_line[fit_weight_idx]));
+        }
+        if (fit_lag_idx >= 0 && static_cast<size_t>(fit_lag_idx) < current_line.size()) {
+          this->SetFitnessLagDuration(integer_node, parse_int(current_line[fit_lag_idx]));
+        }
+        if (fit_peak_val_idx >= 0 && static_cast<size_t>(fit_peak_val_idx) < current_line.size()) {
+          this->SetFitnessPeakValue(integer_node, parse_int(current_line[fit_peak_val_idx]));
+        }
+        if (fit_peak_dur_idx >= 0 && static_cast<size_t>(fit_peak_dur_idx) < current_line.size()) {
+          this->SetFitnessPeakDuration(integer_node, parse_int(current_line[fit_peak_dur_idx]));
+        }
+        if (assigned_out_deg_idx >= 0 && static_cast<size_t>(assigned_out_deg_idx) < current_line.size()) {
+          this->SetAssignedOutDegree(integer_node, parse_int(current_line[assigned_out_deg_idx]));
+        }
+        if (planted_nodes_line_idx >= 0 && static_cast<size_t>(planted_nodes_line_idx) < current_line.size()) {
+          this->SetPlantedNodesLineNumber(integer_node, parse_int(current_line[planted_nodes_line_idx]));
+        }
+        if (sampled_nbr_idx >= 0 && static_cast<size_t>(sampled_nbr_idx) < current_line.size()) {
+          this->SetSampledNeighborhoodSize(integer_node, parse_int(current_line[sampled_nbr_idx]));
+        }
+        if (gen_node_str_idx >= 0 && static_cast<size_t>(gen_node_str_idx) < current_line.size()) {
+          this->SetGeneratorNodeString(integer_node, std::string(current_line[gen_node_str_idx]));
+        }
+        if (fully_rand_idx >= 0 && static_cast<size_t>(fully_rand_idx) < current_line.size()) {
+          this->SetFullyRandomCitations(integer_node, parse_int(current_line[fully_rand_idx]));
+        }
+        int author = -1;
+        if (author_idx >= 0 && static_cast<size_t>(author_idx) < current_line.size()) {
+          author = parse_int(current_line[author_idx]);
+          this->SetAuthorId(integer_node, author);
+        }
+        if (init_author_rep_idx >= 0 && static_cast<size_t>(init_author_rep_idx) < current_line.size()) {
+          this->SetInitialAuthorReputation(integer_node, parse_int(current_line[init_author_rep_idx]));
+        }
+        if (num_authors_idx >= 0 && static_cast<size_t>(num_authors_idx) < current_line.size()) {
+          this->SetNumAuthors(integer_node, parse_int(current_line[num_authors_idx]));
+        }
+        if (cartel_id_idx >= 0 && static_cast<size_t>(cartel_id_idx) < current_line.size()) {
+          int cartel_id = parse_int(current_line[cartel_id_idx]);
+          if (cartel_id != -1) {
+            this->SetCartelIdAttr(integer_node, cartel_id);
+            this->cartel_set.insert(cartel_id);
+            if (author >= 0) this->SetCartelID(author, cartel_id);
+          }
+        }
+        if (cluster_id_idx >= 0 && static_cast<size_t>(cluster_id_idx) < current_line.size()) {
+          int cluster_id = parse_int(current_line[cluster_id_idx]);
           this->SetCommunityAssignment(integer_node, cluster_id);
           if (cluster_id >= 0) {
             this->AddNodeToCluster(integer_node, cluster_id);
           }
         }
-        if (this->author_birth_year_map.contains(author)) {
-          this->author_birth_year_map[author] =
-              std::min(this->author_birth_year_map[author], integer_year);
-        } else {
-          this->author_birth_year_map[author] = integer_year;
+        if (author >= 0) {
+          if (this->author_birth_year_map.contains(author)) {
+            this->author_birth_year_map[author] =
+                std::min(this->author_birth_year_map[author], integer_year);
+          } else {
+            this->author_birth_year_map[author] = integer_year;
+          }
+          this->UpdateAuthorPublicationMap(author, integer_node);
+          this->next_author_id = std::max(this->next_author_id, author);
         }
-        this->UpdateAuthorPublicationMap(author, integer_node);
-        this->next_author_id = std::max(this->next_author_id, author);
       } else {
         int fitness_lag_uniform = 0; // MARK: hard coded to be static fitness
-        int fitness_peak_uniform =
-            1000; // MARK: hard coded to be static fitness
+        int fitness_peak_uniform = 1000;
         int fitness_power = 1;
         this->SetType(integer_node, NodeType::Seed);
         this->SetFitnessLagDuration(integer_node, fitness_lag_uniform);
@@ -152,6 +205,7 @@ void Graph::ParseNodelist() {
     }
     line_no++;
   }
+
   if (this->start_from_checkpoint) {
     this->next_author_id++;
     for (const auto &[author_id, birth_year] : author_birth_year_map) {
@@ -167,7 +221,7 @@ void Graph::ParseNodelist() {
           return left.second < right.second;
         });
     size_t previous_index = 0;
-    int previous_year = node_year_vec.at(previous_index).second;
+    int previous_year = node_year_vec.empty() ? 0 : node_year_vec[0].second;
     for (size_t i = 0; i < node_year_vec.size(); i++) {
       int current_node_id = node_year_vec[i].first;
       int current_year = node_year_vec[i].second;
@@ -175,24 +229,22 @@ void Graph::ParseNodelist() {
       this->SetAuthorId(current_node_id, author_id);
       this->UpdateAuthorPublicationMap(author_id, current_node_id);
       if (previous_year != current_year) {
-        this->ComputeAuthorReputations();
         for (size_t j = previous_index; j < i; j++) {
-          int node_id = node_year_vec.at(j).first;
-          int author_id = this->GetAuthorId(node_id);
+          int node_id = node_year_vec[j].first;
+          int auth = this->GetAuthorId(node_id);
           this->SetInitialAuthorReputation(
-              node_id, this->author_reputation_map.at(author_id));
+              node_id, this->ComputeSingleAuthorReputation(auth));
         }
         previous_index = i;
-        previous_year = node_year_vec.at(previous_index).second;
+        previous_year = current_year;
       }
     }
     if (previous_index < node_year_vec.size()) {
-      this->ComputeAuthorReputations();
       for (size_t j = previous_index; j < node_year_vec.size(); j++) {
-        int node_id = node_year_vec.at(j).first;
-        int author_id = this->GetAuthorId(node_id);
+        int node_id = node_year_vec[j].first;
+        int auth = this->GetAuthorId(node_id);
         this->SetInitialAuthorReputation(
-            node_id, this->author_reputation_map.at(author_id));
+            node_id, this->ComputeSingleAuthorReputation(auth));
       }
     }
   }
@@ -232,46 +284,78 @@ void Graph::UpdateAuthorPublicationMap(int author, int node) {
 }
 
 void Graph::ComputeAuthorReputations() {
+  std::vector<int> freq;
   for (const auto &[author_id, birth_year] : this->author_birth_year_map) {
-    if (!this->author_publication_map.contains(author_id)) {
+    auto it = this->author_publication_map.find(author_id);
+    if (it == this->author_publication_map.end()) {
       std::cerr << "Missing author_id in author_publication_map: " << author_id
                 << "\n";
       throw std::out_of_range("Missing author_id in author_publication_map");
     }
-    const std::vector<int> &publication_vec =
-        this->author_publication_map.at(author_id);
+    const std::vector<int> &publication_vec = it->second;
     int h_index = 0;
     if (!publication_vec.empty()) {
-      std::unordered_map<int, int> freq_map;
+      size_t n = publication_vec.size();
+      if (freq.size() <= n) {
+        freq.resize(n + 1, 0);
+      } else {
+        std::fill(freq.begin(), freq.begin() + n + 1, 0);
+      }
       for (size_t i = 0; i < publication_vec.size(); i++) {
-        int current_publication = publication_vec.at(i);
+        int current_publication = publication_vec[i];
         size_t current_publication_in_degree =
             this->GetInDegree(current_publication);
-        freq_map[std::min(publication_vec.size(),
-                          current_publication_in_degree)]++;
+        freq[std::min(n, current_publication_in_degree)]++;
       }
-      h_index = publication_vec.size();
-      int num_candidate_papers = freq_map[h_index];
+      h_index = static_cast<int>(n);
+      int num_candidate_papers = freq[h_index];
       while (h_index > num_candidate_papers) {
         h_index--;
-        num_candidate_papers += freq_map[h_index];
+        num_candidate_papers += freq[h_index];
       }
     }
     this->author_reputation_map[author_id] = h_index;
   }
 }
 
+int Graph::ComputeSingleAuthorReputation(int author_id) {
+  auto it = this->author_publication_map.find(author_id);
+  if (it == this->author_publication_map.end() || it->second.empty()) {
+    this->author_reputation_map[author_id] = 0;
+    return 0;
+  }
+  const auto &pubs = it->second;
+  size_t n = pubs.size();
+  std::vector<int> freq(n + 1, 0);
+  for (int p : pubs) {
+    size_t in_deg = this->GetInDegree(p);
+    freq[std::min(n, in_deg)]++;
+  }
+  int h = static_cast<int>(n);
+  int cum = freq[h];
+  while (h > cum) {
+    h--;
+    cum += freq[h];
+  }
+  this->author_reputation_map[author_id] = h;
+  return h;
+}
+
 void Graph::SaveInitialAuthorReputations() {
   for (const auto &node_id : this->GetNodeSet()) {
     int author_id = this->GetAuthorId(node_id);
-    this->SetInitialAuthorReputation(node_id,
-                                     this->author_reputation_map.at(author_id));
+    auto it = this->author_reputation_map.find(author_id);
+    this->SetInitialAuthorReputation(node_id, (it != this->author_reputation_map.end()) ? it->second : 0);
   }
 }
 
 int Graph::GetAuthorReputationForNode(int node) const {
   int author_id = this->GetAuthorId(node);
-  return this->author_reputation_map.at(author_id);
+  auto it = this->author_reputation_map.find(author_id);
+  if (it != this->author_reputation_map.end()) {
+    return it->second;
+  }
+  return 0;
 }
 
 int Graph::GetNextNumAuthors() {
@@ -320,8 +404,12 @@ void Graph::UpdateAuthorManual(int author_id) {
       this->author_publication_map.contains(author_id)
           ? this->author_publication_map.at(author_id).size()
           : 0;
-  std::erase(this->publication_count_to_author_map[num_publications_by_author],
-             author_id);
+  auto &vec = this->publication_count_to_author_map[num_publications_by_author];
+  auto it = std::find(vec.begin(), vec.end(), author_id);
+  if (it != vec.end()) {
+    *it = vec.back();
+    vec.pop_back();
+  }
   this->publication_count_to_author_map[num_publications_by_author + 1]
       .push_back(author_id);
 }
@@ -332,58 +420,89 @@ int Graph::GetNextAuthor(int current_year, const std::set<int> &exclusion_set) {
   bool found_valid_place = false;
   int proposed_publication_count_for_author = 2;
   int return_author = this->next_author_id;
-  while (std::round(num_authors_with_one_paper /
-                    pow(proposed_publication_count_for_author,
-                        this->lotka_exponent)) >= 1) {
-    int expected_num_authors_with_proposed_publication_count = std::round(
-        num_authors_with_one_paper /
-        pow(proposed_publication_count_for_author, this->lotka_exponent));
-    int actual_num_authors_with_proposed_publication_count =
-        this->publication_count_to_author_map
-            [proposed_publication_count_for_author]
-                .size();
-    int deficit = expected_num_authors_with_proposed_publication_count -
-                  actual_num_authors_with_proposed_publication_count;
+
+  while (true) {
+    double denom = (this->lotka_exponent == 2)
+                       ? (static_cast<double>(proposed_publication_count_for_author) *
+                          proposed_publication_count_for_author)
+                       : std::pow(proposed_publication_count_for_author, this->lotka_exponent);
+    int expected_num =
+        static_cast<int>(std::round(num_authors_with_one_paper / denom));
+    if (expected_num < 1) {
+      break;
+    }
+    int actual_num =
+        this->publication_count_to_author_map[proposed_publication_count_for_author]
+            .size();
+    int deficit = expected_num - actual_num;
     if (deficit > 1) {
       found_valid_place = true;
       break;
     }
     proposed_publication_count_for_author++;
   }
+
   if (found_valid_place) {
-    std::vector<int> living_authors;
-    for (size_t i = 0; i < this->publication_count_to_author_map
-                               [proposed_publication_count_for_author - 1]
-                                   .size();
-         i++) {
-      int current_author = this->publication_count_to_author_map
-                               [proposed_publication_count_for_author - 1][i];
-      if (current_year - this->author_birth_year_map[current_author] <
-              this->author_max_lifetime &&
-          !exclusion_set.contains(current_author)) {
-        living_authors.push_back(current_author);
+    auto &cand = this->publication_count_to_author_map[proposed_publication_count_for_author - 1];
+    if (cand.empty()) {
+      found_valid_place = false;
+    } else {
+      int upgraded_author_id = -1;
+      size_t picked_idx = 0;
+      pcg32 &generator = Utils::GetThreadLocalPRNG();
+      std::uniform_int_distribution<size_t> dist(0, cand.size() - 1);
+
+      // Fast rejection sampling: try up to 32 random attempts
+      for (int attempt = 0; attempt < 32; ++attempt) {
+        size_t idx = dist(generator);
+        int a = cand[idx];
+        int birth_year = this->author_birth_year_map[a];
+        if (current_year - birth_year < this->author_max_lifetime &&
+            (exclusion_set.empty() || !exclusion_set.contains(a))) {
+          upgraded_author_id = a;
+          picked_idx = idx;
+          break;
+        }
+      }
+
+      // Fallback if rejection sampling didn't succeed (e.g. >90% dead or excluded)
+      if (upgraded_author_id == -1) {
+        std::vector<size_t> valid_indices;
+        for (size_t i = 0; i < cand.size(); ++i) {
+          int a = cand[i];
+          int birth_year = this->author_birth_year_map[a];
+          if (current_year - birth_year < this->author_max_lifetime &&
+              (exclusion_set.empty() || !exclusion_set.contains(a))) {
+            valid_indices.push_back(i);
+          }
+        }
+        if (!valid_indices.empty()) {
+          std::uniform_int_distribution<size_t> vdist(0, valid_indices.size() - 1);
+          picked_idx = valid_indices[vdist(generator)];
+          upgraded_author_id = cand[picked_idx];
+        }
+      }
+
+      if (upgraded_author_id != -1) {
+        return_author = upgraded_author_id;
+        // O(1) swap-and-pop from candidate list
+        cand[picked_idx] = cand.back();
+        cand.pop_back();
+        this->publication_count_to_author_map[proposed_publication_count_for_author]
+            .push_back(upgraded_author_id);
+      } else {
+        found_valid_place = false;
       }
     }
-    if (living_authors.size() > 0) {
-      pcg32 &generator = Utils::GetThreadLocalPRNG();
-      std::ranges::shuffle(living_authors, generator);
-      int upgraded_author_id = living_authors.back();
-      return_author = upgraded_author_id;
-      std::erase(this->publication_count_to_author_map
-                     [proposed_publication_count_for_author - 1],
-                 upgraded_author_id);
-      this->publication_count_to_author_map
-          [proposed_publication_count_for_author]
-              .push_back(upgraded_author_id);
-    } else {
-      found_valid_place = false;
-    }
   }
+
   if (!found_valid_place) {
     this->publication_count_to_author_map[1].push_back(this->next_author_id);
     this->author_birth_year_map[this->next_author_id] = current_year;
+    return_author = this->next_author_id;
     this->next_author_id++;
   }
+
   return return_author;
 }
 
@@ -398,15 +517,12 @@ void Graph::AddEdge(std::pair<int, int> edge) {
   this->AddNode(edge.second);
 }
 
-void Graph::AddNode(int u) { this->node_set.insert(u); }
-
-const std::set<int> &Graph::GetNodeSet() const { return this->node_set; }
-const std::vector<std::vector<int>> &Graph::GetForwardAdjList() const {
-  return this->forward_adj_list;
-}
-
-const std::vector<std::vector<int>> &Graph::GetBackwardAdjList() const {
-  return this->backward_adj_list;
+void Graph::AddNode(int u) {
+  this->EnsureNodeCapacity(u);
+  if (!this->node_attributes[u].is_valid) {
+    this->node_attributes[u].is_valid = true;
+    this->node_set.insert(u);
+  }
 }
 
 void Graph::PrintGraph() const {

@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+class Graph;
+
 namespace ladybug {
 
 struct DBManifest {
@@ -55,6 +57,9 @@ public:
                        const std::string &cluster_csv = "",
                        const std::string &num_authors_bag_csv = "",
                        bool is_checkpoint = false);
+
+  // Ingest from Graph instance in memory
+  void IngestFromGraph(const ::Graph &graph);
 
   // Checkpointing & Persistence
   void Checkpoint(int current_year);

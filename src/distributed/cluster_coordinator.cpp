@@ -111,12 +111,12 @@ void ClusterCoordinator::Barrier() {
 #endif
 }
 
-void ClusterCoordinator::SynchronizeSuperstep(int current_year,
-                                              ladybug::LadyBugDB &db,
-                                              ActorExchange &exchange) {
+size_t ClusterCoordinator::SynchronizeSuperstep(int current_year,
+                                                ladybug::LadyBugDB &db,
+                                                ActorExchange &exchange) {
   // TODO: Step 4 - Annual BSP Superstep Synchronization
   // 1. Bulk exchange inter-partition citations across cluster ranks
-  exchange.ExchangeAnnualCitations(rank_, world_size_, db);
+  size_t routed = exchange.ExchangeAnnualCitations(rank_, world_size_, db);
 
   // 2. Merge local + received remote delta incoming citations into Backward CSR
   db.CSR().MergeAnnualDeltaBuffer();
@@ -129,6 +129,7 @@ void ClusterCoordinator::SynchronizeSuperstep(int current_year,
 
   // 5. Collective barrier to ensure all nodes committed to disk
   Barrier();
+  return routed;
 }
 
 void ClusterCoordinator::BroadcastManifest(ladybug::DBManifest &manifest,
@@ -154,6 +155,78 @@ void ClusterCoordinator::BroadcastManifest(ladybug::DBManifest &manifest,
 #else
   (void)manifest;
   (void)root;
+#endif
+}
+
+void ClusterCoordinator::BroadcastNewNodeMetadata(
+    std::vector<int> &new_nodes,
+    std::vector<int> &cluster_ids,
+    std::vector<int> &author_ids,
+    std::vector<int> &generator_nodes,
+    int root) {
+#if DISTRIBUTED_HAS_MPI
+  if (mpi_enabled_ && world_size_ > 1) {
+    int count = static_cast<int>(new_nodes.size());
+    MPI_Bcast(&count, 1, MPI_INT, root, MPI_COMM_WORLD);
+    if (rank_ != root) {
+      new_nodes.resize(count);
+      cluster_ids.resize(count);
+      author_ids.resize(count);
+      generator_nodes.resize(count);
+    }
+    if (count > 0) {
+      MPI_Bcast(new_nodes.data(), count, MPI_INT, root, MPI_COMM_WORLD);
+      MPI_Bcast(cluster_ids.data(), count, MPI_INT, root, MPI_COMM_WORLD);
+      MPI_Bcast(author_ids.data(), count, MPI_INT, root, MPI_COMM_WORLD);
+      MPI_Bcast(generator_nodes.data(), count, MPI_INT, root, MPI_COMM_WORLD);
+    }
+  }
+#else
+  (void)new_nodes;
+  (void)cluster_ids;
+  (void)author_ids;
+  (void)generator_nodes;
+  (void)root;
+#endif
+}
+
+void ClusterCoordinator::SynchronizeNewEdges(
+    std::vector<std::pair<int, int>> &new_edges_vec) {
+#if DISTRIBUTED_HAS_MPI
+  if (mpi_enabled_ && world_size_ > 1) {
+    int local_edge_count = static_cast<int>(new_edges_vec.size());
+    std::vector<int> edge_counts(world_size_, 0);
+    MPI_Allgather(&local_edge_count, 1, MPI_INT, edge_counts.data(), 1, MPI_INT,
+                  MPI_COMM_WORLD);
+
+    std::vector<int> recv_counts(world_size_, 0);
+    std::vector<int> displs(world_size_, 0);
+    int total_ints = 0;
+    for (int r = 0; r < world_size_; ++r) {
+      recv_counts[r] = edge_counts[r] * 2;
+      displs[r] = total_ints;
+      total_ints += recv_counts[r];
+    }
+
+    std::vector<int32_t> flat_send(local_edge_count * 2);
+    for (int i = 0; i < local_edge_count; ++i) {
+      flat_send[2 * i] = new_edges_vec[i].first;
+      flat_send[2 * i + 1] = new_edges_vec[i].second;
+    }
+
+    std::vector<int32_t> flat_recv(total_ints);
+    MPI_Allgatherv(flat_send.data(), local_edge_count * 2, MPI_INT32_T,
+                   flat_recv.data(), recv_counts.data(), displs.data(),
+                   MPI_INT32_T, MPI_COMM_WORLD);
+
+    new_edges_vec.clear();
+    new_edges_vec.reserve(total_ints / 2);
+    for (int i = 0; i < total_ints; i += 2) {
+      new_edges_vec.push_back({flat_recv[i], flat_recv[i + 1]});
+    }
+  }
+#else
+  (void)new_edges_vec;
 #endif
 }
 

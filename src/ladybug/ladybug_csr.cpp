@@ -318,16 +318,15 @@ void LadyBugBidirectionalCSR::IngestCSV(const std::string &edgelist_csv, size_t 
 
   while (std::getline(file, line)) {
     if (line.empty()) continue;
-    std::stringstream ss(line);
-    std::string val1, val2;
-    if (std::getline(ss, val1, delim) && std::getline(ss, val2, delim)) {
-      if (!val1.empty() && val1.back() == '\r') val1.pop_back();
-      if (!val2.empty() && val2.back() == '\r') val2.pop_back();
-      int32_t u = std::stoi(val1);
-      int32_t v = std::stoi(val2);
-      edges.push_back({u, v});
-      max_node_id = std::max(max_node_id, std::max(u, v));
+    const char *p = line.c_str();
+    char *end = nullptr;
+    int32_t u = static_cast<int32_t>(std::strtol(p, &end, 10));
+    while (*end == delim || *end == ' ' || *end == '\t' || *end == '\r') {
+      end++;
     }
+    int32_t v = static_cast<int32_t>(std::strtol(end, nullptr, 10));
+    edges.push_back({u, v});
+    max_node_id = std::max(max_node_id, std::max(u, v));
   }
 
   size_t n_nodes = std::max(total_nodes, static_cast<size_t>(max_node_id + 1));
@@ -390,6 +389,61 @@ void LadyBugBidirectionalCSR::IngestCSV(const std::string &edgelist_csv, size_t 
 
   num_nodes_ = n_nodes;
   num_edges_ = n_edges;
+
+  Sync(false);
+}
+
+void LadyBugBidirectionalCSR::BuildFromAdjLists(
+    size_t n_nodes, const std::vector<std::vector<int>> &fwd_adj,
+    const std::vector<std::vector<int>> &bwd_adj) {
+  uint64_t n_edges = 0;
+  for (size_t u = 0; u < fwd_adj.size() && u < n_nodes; ++u) {
+    n_edges += fwd_adj[u].size();
+  }
+
+  EnsureNodeCapacity(n_nodes);
+  EnsureEdgeCapacity(n_edges);
+
+  num_nodes_ = n_nodes;
+  num_edges_ = n_edges;
+
+  // 1. Build Forward CSR
+  fwd_offsets_.SetSize(n_nodes + 1);
+  uint64_t fwd_cur = 0;
+  for (size_t u = 0; u < n_nodes; ++u) {
+    fwd_offsets_[u] = fwd_cur;
+    if (u < fwd_adj.size()) {
+      fwd_cur += fwd_adj[u].size();
+    }
+  }
+  fwd_offsets_[n_nodes] = fwd_cur;
+
+  fwd_edges_.SetSize(fwd_cur);
+  for (size_t u = 0; u < fwd_adj.size() && u < n_nodes; ++u) {
+    uint64_t pos = fwd_offsets_[u];
+    for (size_t idx = 0; idx < fwd_adj[u].size(); ++idx) {
+      fwd_edges_[pos + idx] = fwd_adj[u][idx];
+    }
+  }
+
+  // 2. Build Backward CSR
+  bwd_offsets_.SetSize(n_nodes + 1);
+  uint64_t bwd_cur = 0;
+  for (size_t v = 0; v < n_nodes; ++v) {
+    bwd_offsets_[v] = bwd_cur;
+    if (v < bwd_adj.size()) {
+      bwd_cur += bwd_adj[v].size();
+    }
+  }
+  bwd_offsets_[n_nodes] = bwd_cur;
+
+  bwd_edges_.SetSize(bwd_cur);
+  for (size_t v = 0; v < bwd_adj.size() && v < n_nodes; ++v) {
+    uint64_t pos = bwd_offsets_[v];
+    for (size_t idx = 0; idx < bwd_adj[v].size(); ++idx) {
+      bwd_edges_[pos + idx] = bwd_adj[v][idx];
+    }
+  }
 
   Sync(false);
 }

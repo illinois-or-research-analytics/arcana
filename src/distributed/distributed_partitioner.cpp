@@ -105,11 +105,22 @@ int DistributedPartitioner::GetNodeOwnerRank(
     int node_id, const ladybug::LadyBugNodeStore &node_store) const noexcept {
   if (world_size_ <= 1 || node_id < 0) return 0;
   int cid = node_store.GetClusterId(node_id);
-  return GetOwnerRank(cid);
+  if (cid >= 0) {
+    return GetOwnerRank(cid);
+  }
+  return (node_id % world_size_);
 }
 
 bool DistributedPartitioner::IsLocalCluster(int cluster_id) const noexcept {
   return GetOwnerRank(cluster_id) == my_rank_;
+}
+
+bool DistributedPartitioner::IsLocalClusterOrNode(int cluster_id, int node_id) const noexcept {
+  if (world_size_ <= 1) return true;
+  if (cluster_id >= 0) {
+    return IsLocalCluster(cluster_id);
+  }
+  return (node_id >= 0 ? (node_id % world_size_) : 0) == my_rank_;
 }
 
 bool DistributedPartitioner::IsLocalNode(

@@ -39,11 +39,21 @@ public:
   // 1. Exchanges all inter-partition citations generated in the current year.
   // 2. Merges local + remote delta incoming citations into backward CSR.
   // 3. Atomically commits local database checkpoint and updates manifest.
-  void SynchronizeSuperstep(int current_year, ladybug::LadyBugDB &db,
-                            ActorExchange &exchange);
+  size_t SynchronizeSuperstep(int current_year, ladybug::LadyBugDB &db,
+                              ActorExchange &exchange);
 
   // Broadcast manifest metadata from root rank to all worker ranks
   void BroadcastManifest(ladybug::DBManifest &manifest, int root = 0);
+
+  // Broadcast new node assignments from root rank to all worker ranks
+  void BroadcastNewNodeMetadata(std::vector<int> &new_nodes,
+                                std::vector<int> &cluster_ids,
+                                std::vector<int> &author_ids,
+                                std::vector<int> &generator_nodes,
+                                int root = 0);
+
+  // Synchronize newly created edges across all ranks via MPI_Allgatherv
+  void SynchronizeNewEdges(std::vector<std::pair<int, int>> &new_edges_vec);
 
   // Global reduction helpers
   uint64_t GlobalSum(uint64_t local_val) const;

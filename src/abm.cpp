@@ -859,7 +859,7 @@ void ABM::InitializeSimulation() {
         this->logger.WriteToLogFile("LadyBugDB successfully recovered from checkpoint at year " + std::to_string(this->db.GetManifest().current_year), Log::info);
       }
     } else {
-      this->db.IngestSeedData(this->nodelist, this->edgelist, this->community_assignment, this->num_authors_bag, false);
+      this->db.IngestFromGraph(*this->graph);
     }
 
     this->db.Nodes().EnsureNodeCapacity(this->final_graph_size);
@@ -1085,6 +1085,82 @@ void ABM::RunSimulationLoop() {
     }
     this->logger.LogTime(current_year, "Pick generator nodes");
 
+    // Broadcast new node assignments across MPI ranks so all compute nodes share identical cluster mappings
+    if (this->coordinator.IsMPIEnabled()) {
+      std::vector<int> cluster_ids(new_nodes_vec.size());
+      std::vector<int> author_ids(new_nodes_vec.size());
+      std::vector<int> primary_gen_nodes(new_nodes_vec.size());
+
+      if (this->coordinator.IsMaster()) {
+        for (size_t i = 0; i < new_nodes_vec.size(); ++i) {
+          int n = new_nodes_vec[i];
+          cluster_ids[i] = this->graph->GetCommunityAssignment(n);
+          author_ids[i] = this->graph->GetAuthorId(n);
+          auto gen_vec = this->GetGraphAttributesGeneratorNodes(this->graph, n);
+          primary_gen_nodes[i] = gen_vec.empty() ? -1 : gen_vec[0];
+        }
+      }
+
+      this->coordinator.BroadcastNewNodeMetadata(
+          new_nodes_vec, cluster_ids, author_ids, primary_gen_nodes, 0);
+
+      if (!this->coordinator.IsMaster()) {
+        for (size_t i = 0; i < new_nodes_vec.size(); ++i) {
+          int n = new_nodes_vec[i];
+          this->graph->SetAuthorId(n, author_ids[i]);
+          this->graph->UpdateAuthorPublicationMap(author_ids[i], n);
+          this->graph->SetAuthorBirthYear(author_ids[i], current_year);
+          this->graph->SetCommunityAssignment(n, cluster_ids[i]);
+          if (cluster_ids[i] >= 0) {
+            this->graph->AddNodeToCluster(n, cluster_ids[i]);
+          }
+          if (primary_gen_nodes[i] >= 0) {
+            this->graph->SetGeneratorNodeString(n, std::to_string(primary_gen_nodes[i]));
+          }
+        }
+      }
+    }
+
+    // Tally clusters and count of new agents added by this compute node
+    std::map<int, int> local_cluster_new_agents;
+    int local_new_agents_count = 0;
+    for (size_t i = 0; i < new_nodes_vec.size(); i++) {
+      int new_node = new_nodes_vec[i];
+      int cluster_id = this->graph->GetCommunityAssignment(new_node);
+      if (!this->coordinator.IsMPIEnabled() || this->partitioner.IsLocalClusterOrNode(cluster_id, new_node)) {
+        local_cluster_new_agents[cluster_id]++;
+        local_new_agents_count++;
+      }
+    }
+
+    std::string rank_prefix = "Rank " + std::to_string(this->coordinator.GetRank());
+    std::string timing_summary = rank_prefix + " added " + std::to_string(local_new_agents_count) +
+                                 " agents across " + std::to_string(local_cluster_new_agents.size()) +
+                                 " clusters";
+    this->logger.LogTime(current_year, timing_summary, local_new_agents_count);
+
+    // Record per-cluster agent additions in timing log file
+    for (const auto &[cid, count] : local_cluster_new_agents) {
+      std::string cluster_label = "Cluster " + std::to_string(cid) + " (" + rank_prefix + ") new agents";
+      this->logger.LogTime(current_year, cluster_label, count);
+    }
+
+    std::stringstream cluster_ss;
+    cluster_ss << "[" << rank_prefix << "] Added " << local_new_agents_count << " new agents in "
+               << local_cluster_new_agents.size() << " local clusters: [";
+    int c_shown = 0;
+    for (const auto &[cid, count] : local_cluster_new_agents) {
+      if (c_shown++ < 15) {
+        cluster_ss << "C" << cid << ":" << count << " ";
+      }
+    }
+    if (local_cluster_new_agents.size() > 15) {
+      cluster_ss << "... (" << local_cluster_new_agents.size() << " total)]";
+    } else {
+      cluster_ss << "]";
+    }
+    this->logger.WriteToLogFile(cluster_ss.str(), Log::info);
+
     MetricsEngine::FillAuthorReputationSpan(
         this->graph, this->reverse_continuous_node_mapping,
         this->author_reputation_vec, current_graph_size);
@@ -1130,6 +1206,14 @@ void ABM::RunSimulationLoop() {
 #pragma omp parallel for reduction(custom_merge_vec_int : new_edges_vec)       \
     reduction(merge_str_int_pair_vecs : parallel_stage_time_vec)
     for (size_t i = 0; i < new_nodes_vec.size(); i++) {
+      int new_node = new_nodes_vec[i];
+      int cluster_id = this->graph->GetCommunityAssignment(new_node);
+
+      // Distributed Partitioning: only simulate citations for agents belonging to this compute node's clusters
+      if (this->coordinator.IsMPIEnabled() && !this->partitioner.IsLocalClusterOrNode(cluster_id, new_node)) {
+        continue;
+      }
+
       int thread_id = omp_get_thread_num();
       std::chrono::time_point<std::chrono::steady_clock> local_prev_time =
           std::chrono::steady_clock::now();
@@ -1144,7 +1228,6 @@ void ABM::RunSimulationLoop() {
       auto &citations_vec = thread_citations_vec[thread_id];
       std::fill(citations_vec.begin(), citations_vec.end(), 0);
       std::span<int> citations(citations_vec);
-      int new_node = new_nodes_vec[i];
       int continuous_id = ((size_t)new_node < this->continuous_node_mapping.size())
                               ? this->continuous_node_mapping[new_node]
                               : new_node;
@@ -1167,8 +1250,6 @@ void ABM::RunSimulationLoop() {
       std::vector<std::vector<int>> n_hop_map =
           this->neighborhood_search->GetNeighborhoodMap(
               this->graph, current_year, generator_nodes, num_hops);
-
-      int cluster_id = this->graph->GetCommunityAssignment(new_node);
 
       if (alpha > 0 && cluster_id >= 0 &&
           this->graph->GetClusterSize(cluster_id, current_year) >= this->theta) {
@@ -1396,6 +1477,12 @@ void ABM::RunSimulationLoop() {
                          per_stage_time_map["make random citations"]);
     this->logger.LogTime(current_year, "record edges",
                          per_stage_time_map["record edges"]);
+    if (this->coordinator.IsMPIEnabled()) {
+      this->coordinator.SynchronizeNewEdges(new_edges_vec);
+      this->logger.LogTime(current_year, "Synchronize distributed new edges across ranks",
+                           static_cast<int>(new_edges_vec.size()));
+    }
+
     for (size_t i = 0; i < new_edges_vec.size(); i++) {
       int new_node = new_edges_vec[i].first;
       int destination_id = new_edges_vec[i].second;
@@ -1424,12 +1511,17 @@ void ABM::RunSimulationLoop() {
     this->logger.LogTime(current_year, "Assign fitness values to new nodes");
     this->graph->ComputeAuthorReputations();
     this->UpdateGraphAttributesInitialAuthorReputations(this->graph,
-                                                        new_nodes_vec);
+                                                         new_nodes_vec);
 
     if (this->storage_backend == "ladybug") {
       const auto &fwd_adj = this->graph->GetForwardAdjList();
       for (size_t i = 0; i < new_nodes_vec.size(); i++) {
         int new_node = new_nodes_vec[i];
+        int cluster_id = this->graph->GetCommunityAssignment(new_node);
+        if (this->coordinator.IsMPIEnabled() && !this->partitioner.IsLocalClusterOrNode(cluster_id, new_node)) {
+          continue;
+        }
+
         int weight_span_index = this->continuous_node_mapping[new_node] - this->initial_graph_size;
 
         if ((size_t)new_node < fwd_adj.size()) {
@@ -1461,8 +1553,8 @@ void ABM::RunSimulationLoop() {
         }
       }
 
-      this->coordinator.SynchronizeSuperstep(current_year, this->db, this->exchange);
-      this->logger.LogTime(current_year, "Synchronize LadyBug superstep & checkpoint");
+      size_t remote_routed = this->coordinator.SynchronizeSuperstep(current_year, this->db, this->exchange);
+      this->logger.LogTime(current_year, "Synchronize LadyBug superstep & checkpoint (inter-rank citations routed: " + std::to_string(remote_routed) + ")", static_cast<int>(remote_routed));
 
       if (this->signal_supervisor.ShouldStop()) {
         this->logger.WriteToLogFile(

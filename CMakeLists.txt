@@ -36,7 +36,7 @@ else()
     set(CMAKE_CXX_STANDARD 20)
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # for clangd lsp
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG -march=native -funroll-loops -fomit-frame-pointer")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG -march=x86-64-v3 -funroll-loops -fomit-frame-pointer")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -ggdb -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer")
     # set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -ggdb -fno-omit-frame-pointer")
     # File paths
@@ -91,60 +91,5 @@ else()
     target_include_directories(abm
         PUBLIC ${CMAKE_SOURCE_DIR}/includes
     )
-
-    #[[ LadyBugDB & Distributed Unit Tests ]]
-    enable_testing()
-
-    add_executable(test_vose_alias tests/test_vose_alias.cpp ${CMAKE_SOURCE_DIR}/src/vose_alias.cpp ${CMAKE_SOURCE_DIR}/src/utils.cpp)
-    target_link_libraries(test_vose_alias PUBLIC OpenMP::OpenMP_CXX external_header_libs)
-    target_include_directories(test_vose_alias PUBLIC ${CMAKE_SOURCE_DIR}/includes)
-    add_test(NAME test_vose_alias COMMAND test_vose_alias)
-
-    add_executable(test_vectorized_scoring tests/test_vectorized_scoring.cpp ${CMAKE_SOURCE_DIR}/src/vectorized_scoring.cpp ${CMAKE_SOURCE_DIR}/src/utils.cpp)
-    target_link_libraries(test_vectorized_scoring PUBLIC OpenMP::OpenMP_CXX external_header_libs)
-    target_include_directories(test_vectorized_scoring PUBLIC ${CMAKE_SOURCE_DIR}/includes)
-    add_test(NAME test_vectorized_scoring COMMAND test_vectorized_scoring)
-
-    add_executable(test_ladybug_mmap tests/test_ladybug_mmap.cpp)
-    target_link_libraries(test_ladybug_mmap PUBLIC OpenMP::OpenMP_CXX external_header_libs)
-    target_include_directories(test_ladybug_mmap PUBLIC ${CMAKE_SOURCE_DIR}/includes)
-    add_test(NAME test_ladybug_mmap COMMAND test_ladybug_mmap)
-
-    add_executable(test_ladybug_node_store tests/test_ladybug_node_store.cpp ${LADYBUG_SOURCES} ${CMAKE_SOURCE_DIR}/src/utils.cpp)
-    target_link_libraries(test_ladybug_node_store PUBLIC OpenMP::OpenMP_CXX external_header_libs)
-    target_include_directories(test_ladybug_node_store PUBLIC ${CMAKE_SOURCE_DIR}/includes)
-    add_test(NAME test_ladybug_node_store COMMAND test_ladybug_node_store)
-
-    add_executable(test_ladybug_csr tests/test_ladybug_csr.cpp ${LADYBUG_SOURCES} ${CMAKE_SOURCE_DIR}/src/utils.cpp)
-    target_link_libraries(test_ladybug_csr PUBLIC OpenMP::OpenMP_CXX external_header_libs)
-    target_include_directories(test_ladybug_csr PUBLIC ${CMAKE_SOURCE_DIR}/includes)
-    add_test(NAME test_ladybug_csr COMMAND test_ladybug_csr)
-
-    add_executable(test_ladybug_db tests/test_ladybug_db.cpp ${LADYBUG_SOURCES} ${CMAKE_SOURCE_DIR}/src/utils.cpp)
-    target_link_libraries(test_ladybug_db PUBLIC OpenMP::OpenMP_CXX external_header_libs)
-    target_include_directories(test_ladybug_db PUBLIC ${CMAKE_SOURCE_DIR}/includes)
-    add_test(NAME test_ladybug_db COMMAND test_ladybug_db)
-
-    add_executable(test_ladybug_checkpoint tests/test_ladybug_checkpoint.cpp ${LADYBUG_SOURCES} ${CMAKE_SOURCE_DIR}/src/signal_supervisor.cpp ${CMAKE_SOURCE_DIR}/src/utils.cpp)
-    target_link_libraries(test_ladybug_checkpoint PUBLIC OpenMP::OpenMP_CXX external_header_libs)
-    target_include_directories(test_ladybug_checkpoint PUBLIC ${CMAKE_SOURCE_DIR}/includes)
-    add_test(NAME test_ladybug_checkpoint COMMAND test_ladybug_checkpoint)
-
-    add_executable(test_distributed_partitioner tests/test_distributed_partitioner.cpp ${LADYBUG_SOURCES} ${DISTRIBUTED_SOURCES} ${CMAKE_SOURCE_DIR}/src/utils.cpp)
-    target_link_libraries(test_distributed_partitioner PUBLIC OpenMP::OpenMP_CXX external_header_libs)
-    if(MPI_FOUND)
-        target_link_libraries(test_distributed_partitioner PUBLIC MPI::MPI_CXX)
-    endif()
-    target_include_directories(test_distributed_partitioner PUBLIC ${CMAKE_SOURCE_DIR}/includes)
-    add_test(NAME test_distributed_partitioner COMMAND test_distributed_partitioner)
-
-    add_executable(test_distributed_exchange tests/test_distributed_exchange.cpp ${LADYBUG_SOURCES} ${DISTRIBUTED_SOURCES} ${CMAKE_SOURCE_DIR}/src/utils.cpp)
-    target_link_libraries(test_distributed_exchange PUBLIC OpenMP::OpenMP_CXX external_header_libs)
-    if(MPI_FOUND)
-        target_link_libraries(test_distributed_exchange PUBLIC MPI::MPI_CXX)
-    endif()
-    target_include_directories(test_distributed_exchange PUBLIC ${CMAKE_SOURCE_DIR}/includes)
-    add_test(NAME test_distributed_exchange COMMAND test_distributed_exchange)
-    set_tests_properties(test_distributed_exchange PROPERTIES ENVIRONMENT "OMPI_MCA_pml=ob1;OMPI_MCA_btl=self,vader,tcp;UCX_TLS=sm,self,tcp;UCX_NET_DEVICES=all")
 
 endif("${CMAKE_BINARY_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")

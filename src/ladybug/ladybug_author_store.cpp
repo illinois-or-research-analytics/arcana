@@ -69,7 +69,12 @@ void LadyBugAuthorStore::UpdateAuthorManual(int author_id) {
   int num_publications = author_publication_map_.contains(author_id)
                              ? static_cast<int>(author_publication_map_.at(author_id).size())
                              : 0;
-  std::erase(publication_count_to_author_map_[num_publications], author_id);
+  auto &vec = publication_count_to_author_map_[num_publications];
+  auto it = std::find(vec.begin(), vec.end(), author_id);
+  if (it != vec.end()) {
+    *it = vec.back();
+    vec.pop_back();
+  }
   publication_count_to_author_map_[num_publications + 1].push_back(author_id);
 }
 
@@ -79,10 +84,14 @@ int LadyBugAuthorStore::GetNextAuthor(int current_year, const std::set<int> &exc
   int proposed_publication_count = 2;
   int return_author = next_author_id_;
 
-  while (std::round(num_authors_with_one_paper /
-                    std::pow(proposed_publication_count, lotka_exponent_)) >= 1) {
-    int expected_num = std::round(num_authors_with_one_paper /
-                                  std::pow(proposed_publication_count, lotka_exponent_));
+  while (true) {
+    double denom = (lotka_exponent_ == 2)
+                       ? (static_cast<double>(proposed_publication_count) * proposed_publication_count)
+                       : std::pow(proposed_publication_count, lotka_exponent_);
+    int expected_num = static_cast<int>(std::round(num_authors_with_one_paper / denom));
+    if (expected_num < 1) {
+      break;
+    }
     int actual_num = publication_count_to_author_map_[proposed_publication_count].size();
     int deficit = expected_num - actual_num;
     if (deficit > 1) {
@@ -93,27 +102,57 @@ int LadyBugAuthorStore::GetNextAuthor(int current_year, const std::set<int> &exc
   }
 
   if (found_valid_place) {
-    std::vector<int> living_authors;
-    const auto &cand = publication_count_to_author_map_[proposed_publication_count - 1];
-    for (int current_author : cand) {
-      int birth_yr = author_birth_year_map_.contains(current_author)
-                         ? author_birth_year_map_[current_author]
-                         : current_year;
-      if (current_year - birth_yr < author_max_lifetime_ &&
-          !exclusion_set.contains(current_author)) {
-        living_authors.push_back(current_author);
-      }
-    }
-
-    if (!living_authors.empty()) {
-      pcg32 &generator = Utils::GetThreadLocalPRNG();
-      std::ranges::shuffle(living_authors, generator);
-      int upgraded_author_id = living_authors.back();
-      return_author = upgraded_author_id;
-      std::erase(publication_count_to_author_map_[proposed_publication_count - 1], upgraded_author_id);
-      publication_count_to_author_map_[proposed_publication_count].push_back(upgraded_author_id);
-    } else {
+    auto &cand = publication_count_to_author_map_[proposed_publication_count - 1];
+    if (cand.empty()) {
       found_valid_place = false;
+    } else {
+      int upgraded_author_id = -1;
+      size_t picked_idx = 0;
+      pcg32 &generator = Utils::GetThreadLocalPRNG();
+      std::uniform_int_distribution<size_t> dist(0, cand.size() - 1);
+
+      // Fast rejection sampling: try up to 32 random attempts
+      for (int attempt = 0; attempt < 32; ++attempt) {
+        size_t idx = dist(generator);
+        int a = cand[idx];
+        auto it_by = author_birth_year_map_.find(a);
+        int birth_yr = (it_by != author_birth_year_map_.end()) ? it_by->second : current_year;
+        if (current_year - birth_yr < author_max_lifetime_ &&
+            (exclusion_set.empty() || !exclusion_set.contains(a))) {
+          upgraded_author_id = a;
+          picked_idx = idx;
+          break;
+        }
+      }
+
+      // Fallback scan
+      if (upgraded_author_id == -1) {
+        std::vector<size_t> valid_indices;
+        for (size_t i = 0; i < cand.size(); ++i) {
+          int a = cand[i];
+          auto it_by = author_birth_year_map_.find(a);
+          int birth_yr = (it_by != author_birth_year_map_.end()) ? it_by->second : current_year;
+          if (current_year - birth_yr < author_max_lifetime_ &&
+              (exclusion_set.empty() || !exclusion_set.contains(a))) {
+            valid_indices.push_back(i);
+          }
+        }
+        if (!valid_indices.empty()) {
+          std::uniform_int_distribution<size_t> vdist(0, valid_indices.size() - 1);
+          picked_idx = valid_indices[vdist(generator)];
+          upgraded_author_id = cand[picked_idx];
+        }
+      }
+
+      if (upgraded_author_id != -1) {
+        return_author = upgraded_author_id;
+        // O(1) swap-and-pop
+        cand[picked_idx] = cand.back();
+        cand.pop_back();
+        publication_count_to_author_map_[proposed_publication_count].push_back(upgraded_author_id);
+      } else {
+        found_valid_place = false;
+      }
     }
   }
 
@@ -128,6 +167,7 @@ int LadyBugAuthorStore::GetNextAuthor(int current_year, const std::set<int> &exc
 }
 
 void LadyBugAuthorStore::ComputeAuthorReputations(const LadyBugNodeStore &node_store) {
+  std::vector<int> freq;
   for (const auto &[author_id, birth_year] : author_birth_year_map_) {
     auto it = author_publication_map_.find(author_id);
     if (it == author_publication_map_.end()) {
@@ -137,20 +177,48 @@ void LadyBugAuthorStore::ComputeAuthorReputations(const LadyBugNodeStore &node_s
     const auto &publications = it->second;
     int h_index = 0;
     if (!publications.empty()) {
-      std::unordered_map<int, int> freq_map;
+      size_t n = publications.size();
+      if (freq.size() <= n) {
+        freq.resize(n + 1, 0);
+      } else {
+        std::fill(freq.begin(), freq.begin() + n + 1, 0);
+      }
       for (int node : publications) {
         size_t deg = node_store.GetInDegree(node);
-        freq_map[std::min(publications.size(), deg)]++;
+        freq[std::min(n, deg)]++;
       }
-      h_index = static_cast<int>(publications.size());
-      int num_cand = freq_map[h_index];
+      h_index = static_cast<int>(n);
+      int num_cand = freq[h_index];
       while (h_index > num_cand) {
         h_index--;
-        num_cand += freq_map[h_index];
+        num_cand += freq[h_index];
       }
     }
     author_reputation_map_[author_id] = h_index;
   }
+}
+
+int LadyBugAuthorStore::ComputeSingleAuthorReputation(int author_id, const LadyBugNodeStore &node_store) {
+  auto it = author_publication_map_.find(author_id);
+  if (it == author_publication_map_.end() || it->second.empty()) {
+    author_reputation_map_[author_id] = 0;
+    return 0;
+  }
+  const auto &publications = it->second;
+  size_t n = publications.size();
+  std::vector<int> freq(n + 1, 0);
+  for (int node : publications) {
+    size_t deg = node_store.GetInDegree(node);
+    freq[std::min(n, deg)]++;
+  }
+  int h_index = static_cast<int>(n);
+  int num_cand = freq[h_index];
+  while (h_index > num_cand) {
+    h_index--;
+    num_cand += freq[h_index];
+  }
+  author_reputation_map_[author_id] = h_index;
+  return h_index;
 }
 
 int LadyBugAuthorStore::GetAuthorReputation(int author_id) const {

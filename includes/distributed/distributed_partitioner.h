@@ -40,6 +40,7 @@ public:
   int GetOwnerRank(int cluster_id) const noexcept;
   int GetNodeOwnerRank(int node_id, const ladybug::LadyBugNodeStore &node_store) const noexcept;
   bool IsLocalCluster(int cluster_id) const noexcept;
+  bool IsLocalClusterOrNode(int cluster_id, int node_id) const noexcept;
   bool IsLocalNode(int node_id, const ladybug::LadyBugNodeStore &node_store) const noexcept;
 
   int GetMyRank() const noexcept { return my_rank_; }

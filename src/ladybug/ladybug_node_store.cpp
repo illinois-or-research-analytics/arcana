@@ -1,8 +1,10 @@
 #include "ladybug/ladybug_node_store.h"
+#include <charconv>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <string_view>
 #include <unordered_map>
 
 namespace ladybug {
@@ -271,6 +273,33 @@ void LadyBugNodeStore::IngestCSV(const std::string &nodelist_csv, bool is_checkp
   }
 
   auto header_map = ParseHeader(line, delim);
+  auto get_col = [&](const std::string &col) -> int {
+    auto it = header_map.find(col);
+    return it != header_map.end() ? it->second : -1;
+  };
+
+  int node_id_idx = get_col("node_id");
+  int year_idx = get_col("year");
+  int type_idx = get_col("type");
+  int alpha_idx = get_col("alpha");
+  int pa_weight_idx = get_col("pa_weight");
+  int fit_weight_idx = get_col("fit_weight");
+  int num_authors_weight_idx = get_col("num_authors_weight");
+  int author_rep_weight_idx = get_col("author_reputation_weight");
+  int fit_lag_idx = get_col("fit_lag_duration");
+  int fit_peak_val_idx = get_col("fit_peak_value");
+  int fit_peak_dur_idx = get_col("fit_peak_duration");
+  int in_deg_idx = get_col("in_degree");
+  int out_deg_idx = get_col("out_degree");
+  int assigned_out_deg_idx = get_col("assigned_out_degree");
+  int planted_line_idx = get_col("planted_nodes_line_number");
+  int sampled_nbr_idx = get_col("sampled_neighborhood_size");
+  int fully_rand_idx = get_col("fully_random_citations");
+  int author_idx = get_col("author_id");
+  int num_authors_idx = get_col("num_authors");
+  int init_author_rep_idx = get_col("initial_author_reputation");
+  int cartel_id_idx = get_col("cartel_id");
+  int cluster_id_idx = get_col("cluster_id");
 
   int max_node_id = -1;
   struct RowData {
@@ -302,51 +331,72 @@ void LadyBugNodeStore::IngestCSV(const std::string &nodelist_csv, bool is_checkp
   std::vector<RowData> rows;
   rows.reserve(65536);
 
+  std::vector<std::string_view> tokens;
+  tokens.reserve(32);
+
+  auto split_line = [&](std::string_view s) {
+    tokens.clear();
+    size_t start = 0;
+    while (start < s.size()) {
+      size_t end = s.find(delim, start);
+      if (end == std::string_view::npos) {
+        std::string_view tok = s.substr(start);
+        if (!tok.empty() && tok.back() == '\r') tok.remove_suffix(1);
+        tokens.push_back(tok);
+        break;
+      }
+      std::string_view tok = s.substr(start, end - start);
+      if (!tok.empty() && tok.back() == '\r') tok.remove_suffix(1);
+      tokens.push_back(tok);
+      start = end + 1;
+    }
+  };
+
+  auto parse_int = [](std::string_view sv) -> int {
+    int val = 0;
+    std::from_chars(sv.data(), sv.data() + sv.size(), val);
+    return val;
+  };
+  auto parse_double = [](std::string_view sv) -> double {
+    return std::stod(std::string(sv));
+  };
+
   while (std::getline(file, line)) {
     if (line.empty()) continue;
-    std::stringstream ss(line);
-    std::string val;
-    std::vector<std::string> tokens;
-    while (std::getline(ss, val, delim)) {
-      if (!val.empty() && val.back() == '\r') val.pop_back();
-      tokens.push_back(val);
-    }
+    split_line(line);
     if (tokens.empty()) continue;
+    if (node_id_idx < 0 || static_cast<size_t>(node_id_idx) >= tokens.size()) continue;
 
     RowData r;
-    if (header_map.contains("node_id")) {
-      r.node_id = std::stoi(tokens[header_map["node_id"]]);
-    } else {
-      continue;
-    }
+    r.node_id = parse_int(tokens[node_id_idx]);
 
-    if (header_map.contains("year")) {
-      r.year = std::stoi(tokens[header_map["year"]]);
+    if (year_idx >= 0 && static_cast<size_t>(year_idx) < tokens.size()) {
+      r.year = parse_int(tokens[year_idx]);
     }
 
     if (is_checkpoint) {
-      if (header_map.contains("type")) {
-        r.type = (tokens[header_map["type"]] == "seed") ? NodeType::Seed : NodeType::Agent;
+      if (type_idx >= 0 && static_cast<size_t>(type_idx) < tokens.size()) {
+        r.type = (tokens[type_idx] == "seed") ? NodeType::Seed : NodeType::Agent;
       }
-      if (header_map.contains("alpha")) r.alpha = std::stod(tokens[header_map["alpha"]]);
-      if (header_map.contains("pa_weight")) r.pa_weight = std::stod(tokens[header_map["pa_weight"]]);
-      if (header_map.contains("fit_weight")) r.fit_weight = std::stod(tokens[header_map["fit_weight"]]);
-      if (header_map.contains("num_authors_weight")) r.num_authors_weight = std::stod(tokens[header_map["num_authors_weight"]]);
-      if (header_map.contains("author_reputation_weight")) r.author_rep_weight = std::stod(tokens[header_map["author_reputation_weight"]]);
-      if (header_map.contains("fit_lag_duration")) r.fit_lag = std::stoi(tokens[header_map["fit_lag_duration"]]);
-      if (header_map.contains("fit_peak_value")) r.fit_peak_val = std::stoi(tokens[header_map["fit_peak_value"]]);
-      if (header_map.contains("fit_peak_duration")) r.fit_peak_dur = std::stoi(tokens[header_map["fit_peak_duration"]]);
-      if (header_map.contains("in_degree")) r.in_degree = std::stoi(tokens[header_map["in_degree"]]);
-      if (header_map.contains("out_degree")) r.out_degree = std::stoi(tokens[header_map["out_degree"]]);
-      if (header_map.contains("assigned_out_degree")) r.assigned_out_degree = std::stoi(tokens[header_map["assigned_out_degree"]]);
-      if (header_map.contains("planted_nodes_line_number")) r.planted_line = std::stoi(tokens[header_map["planted_nodes_line_number"]]);
-      if (header_map.contains("sampled_neighborhood_size")) r.sampled_nbr_size = std::stoi(tokens[header_map["sampled_neighborhood_size"]]);
-      if (header_map.contains("fully_random_citations")) r.fully_random_cites = std::stoi(tokens[header_map["fully_random_citations"]]);
-      if (header_map.contains("author_id")) r.author_id = std::stoi(tokens[header_map["author_id"]]);
-      if (header_map.contains("num_authors")) r.num_authors = std::stoi(tokens[header_map["num_authors"]]);
-      if (header_map.contains("initial_author_reputation")) r.initial_author_rep = std::stoi(tokens[header_map["initial_author_reputation"]]);
-      if (header_map.contains("cartel_id")) r.cartel_id = std::stoi(tokens[header_map["cartel_id"]]);
-      if (header_map.contains("cluster_id")) r.cluster_id = std::stoi(tokens[header_map["cluster_id"]]);
+      if (alpha_idx >= 0 && static_cast<size_t>(alpha_idx) < tokens.size()) r.alpha = parse_double(tokens[alpha_idx]);
+      if (pa_weight_idx >= 0 && static_cast<size_t>(pa_weight_idx) < tokens.size()) r.pa_weight = parse_double(tokens[pa_weight_idx]);
+      if (fit_weight_idx >= 0 && static_cast<size_t>(fit_weight_idx) < tokens.size()) r.fit_weight = parse_double(tokens[fit_weight_idx]);
+      if (num_authors_weight_idx >= 0 && static_cast<size_t>(num_authors_weight_idx) < tokens.size()) r.num_authors_weight = parse_double(tokens[num_authors_weight_idx]);
+      if (author_rep_weight_idx >= 0 && static_cast<size_t>(author_rep_weight_idx) < tokens.size()) r.author_rep_weight = parse_double(tokens[author_rep_weight_idx]);
+      if (fit_lag_idx >= 0 && static_cast<size_t>(fit_lag_idx) < tokens.size()) r.fit_lag = parse_int(tokens[fit_lag_idx]);
+      if (fit_peak_val_idx >= 0 && static_cast<size_t>(fit_peak_val_idx) < tokens.size()) r.fit_peak_val = parse_int(tokens[fit_peak_val_idx]);
+      if (fit_peak_dur_idx >= 0 && static_cast<size_t>(fit_peak_dur_idx) < tokens.size()) r.fit_peak_dur = parse_int(tokens[fit_peak_dur_idx]);
+      if (in_deg_idx >= 0 && static_cast<size_t>(in_deg_idx) < tokens.size()) r.in_degree = parse_int(tokens[in_deg_idx]);
+      if (out_deg_idx >= 0 && static_cast<size_t>(out_deg_idx) < tokens.size()) r.out_degree = parse_int(tokens[out_deg_idx]);
+      if (assigned_out_deg_idx >= 0 && static_cast<size_t>(assigned_out_deg_idx) < tokens.size()) r.assigned_out_degree = parse_int(tokens[assigned_out_deg_idx]);
+      if (planted_line_idx >= 0 && static_cast<size_t>(planted_line_idx) < tokens.size()) r.planted_line = parse_int(tokens[planted_line_idx]);
+      if (sampled_nbr_idx >= 0 && static_cast<size_t>(sampled_nbr_idx) < tokens.size()) r.sampled_nbr_size = parse_int(tokens[sampled_nbr_idx]);
+      if (fully_rand_idx >= 0 && static_cast<size_t>(fully_rand_idx) < tokens.size()) r.fully_random_cites = parse_int(tokens[fully_rand_idx]);
+      if (author_idx >= 0 && static_cast<size_t>(author_idx) < tokens.size()) r.author_id = parse_int(tokens[author_idx]);
+      if (num_authors_idx >= 0 && static_cast<size_t>(num_authors_idx) < tokens.size()) r.num_authors = parse_int(tokens[num_authors_idx]);
+      if (init_author_rep_idx >= 0 && static_cast<size_t>(init_author_rep_idx) < tokens.size()) r.initial_author_rep = parse_int(tokens[init_author_rep_idx]);
+      if (cartel_id_idx >= 0 && static_cast<size_t>(cartel_id_idx) < tokens.size()) r.cartel_id = parse_int(tokens[cartel_id_idx]);
+      if (cluster_id_idx >= 0 && static_cast<size_t>(cluster_id_idx) < tokens.size()) r.cluster_id = parse_int(tokens[cluster_id_idx]);
     } else {
       r.type = NodeType::Seed;
       r.fit_lag = 0;
