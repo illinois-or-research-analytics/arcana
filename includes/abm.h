@@ -81,6 +81,8 @@ struct SimulationConfig {
   bool use_distributed = false;
   int ghost_hub_threshold = 100;
   double wall_clock_limit = 0.0;
+  int age_damping_start = -1;
+  double age_damping_tau = 10.0;
 };
 
 class ABM {
@@ -172,7 +174,9 @@ public:
         db_path(config.db_path),
         use_distributed(config.use_distributed),
         ghost_hub_threshold(config.ghost_hub_threshold),
-        wall_clock_limit(config.wall_clock_limit) {
+        wall_clock_limit(config.wall_clock_limit),
+        age_damping_start(config.age_damping_start),
+        age_damping_tau(config.age_damping_tau) {
     // initial validation
     if (this->log_file == "") {
       std::cerr << "Log file is required" << std::endl;
@@ -639,6 +643,8 @@ protected:
   bool use_distributed;
   int ghost_hub_threshold;
   double wall_clock_limit;
+  int age_damping_start; // -1 disables age damping of the in-degree score
+  double age_damping_tau;
 
   const int fitness_alpha = -3;
   const int fitness_decay_alpha = 3;

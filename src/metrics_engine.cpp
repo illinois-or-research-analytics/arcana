@@ -224,3 +224,26 @@ void MetricsEngine::CalculateExpScores(
     dst_span[i] /= sum;
   }
 }
+
+void MetricsEngine::CalculateAgeDampedExpScores(
+    Graph *graph, const std::vector<int> &reverse_continuous_node_mapping,
+    int current_year, std::span<int> in_degree_span,
+    std::span<double> dst_span, double gamma, int damping_start,
+    double damping_tau, int current_graph_size) {
+  double sum = 0;
+#pragma omp parallel for reduction(+ : sum)
+  for (int i = 0; i < current_graph_size; i++) {
+    int age = current_year - graph->GetYear(reverse_continuous_node_mapping[i]);
+    double effective_in_degree = in_degree_span[i];
+    if (age > damping_start) {
+      effective_in_degree *= std::exp(-(age - damping_start) / damping_tau);
+    }
+    double current_dst = std::max(std::pow(effective_in_degree, gamma), 1.0) + 1;
+    dst_span[i] = current_dst;
+    sum += current_dst;
+  }
+#pragma omp parallel for
+  for (int i = 0; i < current_graph_size; i++) {
+    dst_span[i] /= sum;
+  }
+}

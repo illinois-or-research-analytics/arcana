@@ -928,11 +928,22 @@ void ABM::RunSimulationLoop() {
         this->graph, this->reverse_continuous_node_mapping, current_year,
         this->fitness_vec, this->fitness_decay_alpha, current_graph_size);
     this->logger.LogTime(current_year, "Fill fitness array");
-    MetricsEngine::CalculateExpScores(
-        exp_cached_results,
-        std::span<int>{this->in_degree_vec.data(), (size_t)current_graph_size},
-        std::span<double>{this->pa_vec.data(), (size_t)current_graph_size},
-        this->gamma);
+    if (this->age_damping_start >= 0) {
+      MetricsEngine::CalculateAgeDampedExpScores(
+          this->graph, this->reverse_continuous_node_mapping, current_year,
+          std::span<int>{this->in_degree_vec.data(),
+                         (size_t)current_graph_size},
+          std::span<double>{this->pa_vec.data(), (size_t)current_graph_size},
+          this->gamma, this->age_damping_start, this->age_damping_tau,
+          current_graph_size);
+    } else {
+      MetricsEngine::CalculateExpScores(
+          exp_cached_results,
+          std::span<int>{this->in_degree_vec.data(),
+                         (size_t)current_graph_size},
+          std::span<double>{this->pa_vec.data(), (size_t)current_graph_size},
+          this->gamma);
+    }
     this->logger.LogTime(current_year, "Process in-degree array");
     MetricsEngine::CalculateExpScores(
         exp_cached_results,

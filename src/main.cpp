@@ -219,6 +219,8 @@ int main(int argc, char *argv[]) {
   bool use_distributed = reader.GetBoolean("General", "use_distributed", false);
   int ghost_hub_threshold = reader.GetInteger("General", "ghost_hub_threshold", 100);
   double wall_clock_limit = reader.GetReal("General", "wall_clock_limit", 0.0);
+  int age_damping_start = reader.GetInteger("Agent", "age_damping_start", -1);
+  double age_damping_tau = reader.GetReal("Agent", "age_damping_tau", 10.0);
 
   if (main_program.is_used("--storage-backend")) {
     storage_backend = main_program.get<std::string>("--storage-backend");
@@ -282,6 +284,8 @@ int main(int argc, char *argv[]) {
   config.use_distributed = use_distributed;
   config.ghost_hub_threshold = ghost_hub_threshold;
   config.wall_clock_limit = wall_clock_limit;
+  config.age_damping_start = age_damping_start;
+  config.age_damping_tau = age_damping_tau;
 
   ABM *abm = new ABM(config);
   abm->coordinator = std::move(coordinator);
