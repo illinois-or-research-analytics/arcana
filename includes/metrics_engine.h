@@ -127,16 +127,18 @@ public:
   std::span<int> in_degree_span, std::span<double> dst_span, double gamma,
   int damping_start, double damping_tau, int current_graph_size Output: void
   (fills dst_span with normalized preferential attachment scores) Description:
-  Same score as CalculateExpScores, but the in-degree of a node older than
-  damping_start years is first multiplied by exp(-(age - damping_start) /
-  damping_tau), where age = current_year - publication year. Only the score
-  input is damped; the stored in-degree is unchanged.
+  Same score as CalculateExpScores, but for a node older than damping_start
+  years the exponent decays from gamma towards min_exponent:
+  min_exponent + (gamma - min_exponent) * exp(-(age - damping_start) /
+  damping_tau), where age = current_year - publication year. A scale factor
+  would cancel within an age bin, so the exponent is what is lowered. The
+  stored in-degree is unchanged.
   */
   static void CalculateAgeDampedExpScores(
       Graph *graph, const std::vector<int> &reverse_continuous_node_mapping,
       int current_year, std::span<int> in_degree_span,
       std::span<double> dst_span, double gamma, int damping_start,
-      double damping_tau, int current_graph_size);
+      double damping_tau, double min_exponent, int current_graph_size);
 };
 
 #endif

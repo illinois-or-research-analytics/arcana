@@ -1,5 +1,6 @@
 #include "neighborhood_search.h"
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <queue>
 #include <sstream>
@@ -266,6 +267,18 @@ NeighborhoodSearch::GetOneAndTwoDistanceNeighborhoods(
     n_hop_map[1].reserve(this->neighborhood_sample);
     n_hop_map[2].reserve(this->neighborhood_sample);
     size_t max_neighborhood_size = this->neighborhood_sample;
+    size_t two_hop_collect_max = max_neighborhood_size;
+    if (this->recency_lambda > 0 && this->prepool_factor > 1) {
+      two_hop_collect_max = max_neighborhood_size * this->prepool_factor;
+    }
+    auto finalize_two_hop = [&]() {
+      if (this->recency_lambda > 0 &&
+          n_hop_map[2].size() > max_neighborhood_size) {
+        n_hop_map[2] = this->RecencyBiasedSample(graph, current_year,
+                                                 n_hop_map[2],
+                                                 max_neighborhood_size);
+      }
+    };
     pcg32 &generator = Utils::GetThreadLocalPRNG();
     for (size_t i = 0; i < generator_nodes.size(); i++) {
       // get the 1-hop first
@@ -293,10 +306,16 @@ NeighborhoodSearch::GetOneAndTwoDistanceNeighborhoods(
       // pick random nodes to get to 2-hop
       if (current_one_hop_neighborhood.size() > max_neighborhood_size) {
         std::vector<int> sampled_one_hop_neighborhood;
-        std::sample(current_one_hop_neighborhood.begin(),
-                    current_one_hop_neighborhood.end(),
-                    std::back_inserter(sampled_one_hop_neighborhood),
-                    max_neighborhood_size, generator);
+        if (this->recency_lambda > 0) {
+          sampled_one_hop_neighborhood = this->RecencyBiasedSample(
+              graph, current_year, current_one_hop_neighborhood,
+              max_neighborhood_size);
+        } else {
+          std::sample(current_one_hop_neighborhood.begin(),
+                      current_one_hop_neighborhood.end(),
+                      std::back_inserter(sampled_one_hop_neighborhood),
+                      max_neighborhood_size, generator);
+        }
         current_one_hop_neighborhood = std::move(sampled_one_hop_neighborhood);
       }
       // until here should be fast
@@ -316,7 +335,7 @@ NeighborhoodSearch::GetOneAndTwoDistanceNeighborhoods(
         }
         // worst case for one node we might only grab the outgoing edges
         if (n_hop_map[2].size() + current_two_hop_size <
-            max_neighborhood_size) {
+            two_hop_collect_max) {
           if (graph->GetOutDegree(u) > 0 && (size_t)u < forward_adj.size()) {
             for (int outgoing_neighbor : forward_adj[u]) {
               if (!visited.Contains(outgoing_neighbor)) {
@@ -353,7 +372,7 @@ NeighborhoodSearch::GetOneAndTwoDistanceNeighborhoods(
           std::sample(to_be_sampled_neighborhood.begin(),
                       to_be_sampled_neighborhood.end(),
                       std::back_inserter(sampled_neighborhood),
-                      max_neighborhood_size - n_hop_map[2].size(), generator);
+                      two_hop_collect_max - n_hop_map[2].size(), generator);
           for (size_t k = 0; k < sampled_neighborhood.size(); k++) {
             int sampled_node = sampled_neighborhood[k];
             if (!visited.Contains(sampled_node)) {
@@ -361,13 +380,15 @@ NeighborhoodSearch::GetOneAndTwoDistanceNeighborhoods(
               n_hop_map[2].push_back(sampled_node);
             }
           }
-          if (n_hop_map[2].size() == max_neighborhood_size) {
+          if (n_hop_map[2].size() == two_hop_collect_max) {
             visited.Clear();
+            finalize_two_hop();
             return n_hop_map;
           }
         }
       }
     }
+    finalize_two_hop();
   }
   visited.Clear();
   return n_hop_map;
@@ -540,4 +561,28 @@ int NeighborhoodSearch::GetBinIndex(Graph *graph, int current_node,
                                     int current_year) {
   int current_diff = current_year - graph->GetYear(current_node);
   return this->GetBinIndex(current_diff);
+}
+
+std::vector<int> NeighborhoodSearch::RecencyBiasedSample(
+    Graph *graph, int current_year, const std::vector<int> &nodes, size_t k) {
+  if (nodes.size() <= k) {
+    return nodes;
+  }
+  thread_local std::vector<std::pair<double, int>> keyed;
+  keyed.clear();
+  keyed.reserve(nodes.size());
+  pcg32 &generator = Utils::GetThreadLocalPRNG();
+  std::uniform_real_distribution<double> uniform{0.0, 1.0};
+  for (int node : nodes) {
+    double age = std::max(0, current_year - graph->GetYear(node));
+    double exponential = -std::log(1.0 - uniform(generator));
+    keyed.push_back({exponential * std::exp(age / this->recency_lambda), node});
+  }
+  std::nth_element(keyed.begin(), keyed.begin() + k, keyed.end());
+  std::vector<int> sampled;
+  sampled.reserve(k);
+  for (size_t i = 0; i < k; i++) {
+    sampled.push_back(keyed[i].second);
+  }
+  return sampled;
 }

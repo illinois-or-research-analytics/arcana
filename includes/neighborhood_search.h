@@ -96,9 +96,25 @@ public:
       double alpha, int total_num_citations_neighborhood,
       const std::vector<std::vector<int>> &n_hop_map);
 
+  /*
+  Input: Graph *graph, int current_year, const std::vector<int> &nodes, size_t k
+  Output: std::vector<int> of at most k nodes sampled without replacement
+  Description: Weighted sample where a node of age a has weight
+  exp(-a / recency_lambda) (Efraimidis-Spirakis). Returns nodes unchanged if
+  there are at most k.
+  */
+  std::vector<int> RecencyBiasedSample(Graph *graph, int current_year,
+                                       const std::vector<int> &nodes, size_t k);
+
   std::string recency_bins_str;
   bool use_alpha;
   int neighborhood_sample;
+  // Recency bias for the neighborhood down-sampling. recency_lambda <= 0 keeps
+  // uniform sampling. Otherwise a node of age a is kept with weight
+  // exp(-a / recency_lambda). prepool_factor >= 1 widens the 2-hop pool that is
+  // collected before the biased down-sampling to neighborhood_sample nodes.
+  double recency_lambda = -1.0;
+  int prepool_factor = 1;
   int num_bins;
   std::vector<int> bin_boundaries;
   std::vector<int> recency_bin_lut;

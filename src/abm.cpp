@@ -935,7 +935,7 @@ void ABM::RunSimulationLoop() {
                          (size_t)current_graph_size},
           std::span<double>{this->pa_vec.data(), (size_t)current_graph_size},
           this->gamma, this->age_damping_start, this->age_damping_tau,
-          current_graph_size);
+          this->age_damping_min_exponent, current_graph_size);
     } else {
       MetricsEngine::CalculateExpScores(
           exp_cached_results,

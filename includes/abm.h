@@ -83,6 +83,9 @@ struct SimulationConfig {
   double wall_clock_limit = 0.0;
   int age_damping_start = -1;
   double age_damping_tau = 10.0;
+  double age_damping_min_exponent = 0.0;
+  double neighborhood_recency_lambda = -1.0;
+  int neighborhood_prepool_factor = 1;
 };
 
 class ABM {
@@ -176,7 +179,10 @@ public:
         ghost_hub_threshold(config.ghost_hub_threshold),
         wall_clock_limit(config.wall_clock_limit),
         age_damping_start(config.age_damping_start),
-        age_damping_tau(config.age_damping_tau) {
+        age_damping_tau(config.age_damping_tau),
+        age_damping_min_exponent(config.age_damping_min_exponent),
+        neighborhood_recency_lambda(config.neighborhood_recency_lambda),
+        neighborhood_prepool_factor(config.neighborhood_prepool_factor) {
     // initial validation
     if (this->log_file == "") {
       std::cerr << "Log file is required" << std::endl;
@@ -206,6 +212,8 @@ public:
 
     this->neighborhood_search = new NeighborhoodSearch(
         this->recency_bins, this->use_alpha, this->neighborhood_sample);
+    this->neighborhood_search->recency_lambda = this->neighborhood_recency_lambda;
+    this->neighborhood_search->prepool_factor = this->neighborhood_prepool_factor;
     this->citation_engine =
         new CitationEngine(this->null_cartel, this->neighborhood_search);
     omp_set_num_threads(this->num_processors);
@@ -645,6 +653,9 @@ protected:
   double wall_clock_limit;
   int age_damping_start; // -1 disables age damping of the in-degree score
   double age_damping_tau;
+  double age_damping_min_exponent; // exponent the in-degree score decays towards
+  double neighborhood_recency_lambda; // <= 0: uniform neighborhood sampling
+  int neighborhood_prepool_factor;
 
   const int fitness_alpha = -3;
   const int fitness_decay_alpha = 3;
