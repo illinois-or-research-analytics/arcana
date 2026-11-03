@@ -62,6 +62,20 @@ public:
       std::span<double> author_reputation_weight_span,
       double preferential_weight, double fitness_weight,
       double num_authors_weight, double author_reputation_weight);
+  /*
+  Input: the four weight spans, means (pa, fit, num_authors,
+  author_reputation; normalized to sum to 1), concentration Output: void (fills
+  the spans) Description: Each agent draws its weights from a Dirichlet
+  distribution with mean vector means and total concentration, so the expected
+  value of each weight is its mean and the weights sum to 1. Larger
+  concentration keeps weights closer to their means; a mean of 0 fixes that
+  weight at 0.
+  */
+  static void PopulateDirichletWeightSpans(
+      std::span<double> pa_weight_span, std::span<double> fit_weight_span,
+      std::span<double> num_authors_weight_span,
+      std::span<double> author_reputation_weight_span,
+      const std::vector<double> &means, double concentration);
 
   /*
   Input: Graph *graph, const std::unordered_map<int, int>

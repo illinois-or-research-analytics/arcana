@@ -88,6 +88,8 @@ struct SimulationConfig {
   double neighborhood_recency_lambda = -1.0;
   int neighborhood_prepool_factor = 1;
   bool unbinned_age_sampling = false;
+  std::vector<double> weight_means; // pa, fit, num_authors, author_reputation; empty = off
+  double weight_concentration = 20.0;
 };
 
 class ABM {
@@ -185,6 +187,8 @@ public:
         age_damping_min_exponent(config.age_damping_min_exponent),
         max_citable_age(config.max_citable_age),
         unbinned_age_sampling(config.unbinned_age_sampling),
+        weight_means(config.weight_means),
+        weight_concentration(config.weight_concentration),
         neighborhood_recency_lambda(config.neighborhood_recency_lambda),
         neighborhood_prepool_factor(config.neighborhood_prepool_factor) {
     // initial validation
@@ -678,6 +682,11 @@ protected:
   // scores candidates of that age. Replaces the recency bins.
   bool unbinned_age_sampling;
   std::vector<double> age_pmf;
+  // Expected values of the agent weights (pa, fit, num_authors,
+  // author_reputation). Each agent draws its weights from a Dirichlet with
+  // these means and total concentration weight_concentration.
+  std::vector<double> weight_means;
+  double weight_concentration;
   double neighborhood_recency_lambda; // <= 0: uniform neighborhood sampling
   int neighborhood_prepool_factor;
 

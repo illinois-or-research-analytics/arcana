@@ -828,11 +828,18 @@ void ABM::InitializeSimulation() {
   this->fitness_peak_duration_vec.assign(added_size, -1);
   this->planted_author_id_vec.assign(added_size, -1);
   this->planted_cluster_id_vec.assign(added_size, -1);
-  MetricsEngine::PopulateWeightSpans(
-      this->pa_weight_vec, this->fit_weight_vec, this->num_authors_weight_vec,
-      this->author_reputation_weight_vec, this->preferential_weight,
-      this->fitness_weight, this->num_authors_weight,
-      this->author_reputation_weight);
+  if (!this->weight_means.empty()) {
+    MetricsEngine::PopulateDirichletWeightSpans(
+        this->pa_weight_vec, this->fit_weight_vec, this->num_authors_weight_vec,
+        this->author_reputation_weight_vec, this->weight_means,
+        this->weight_concentration);
+  } else {
+    MetricsEngine::PopulateWeightSpans(
+        this->pa_weight_vec, this->fit_weight_vec, this->num_authors_weight_vec,
+        this->author_reputation_weight_vec, this->preferential_weight,
+        this->fitness_weight, this->num_authors_weight,
+        this->author_reputation_weight);
+  }
   MetricsEngine::PopulateAlphaSpan(this->alpha_vec, this->use_alpha,
                                    this->alpha, this->minimum_alpha);
   MetricsEngine::PopulateOutDegreeSpan(this->out_degree_vec,

@@ -226,6 +226,12 @@ int main(int argc, char *argv[]) {
   int max_citable_age = reader.GetInteger("Agent", "max_citable_age", -1);
   bool unbinned_age_sampling =
       reader.GetBoolean("Agent", "unbinned_age_sampling", false);
+  double pa_weight_mean = reader.GetReal("Agent", "pa_weight_mean", -1);
+  double fit_weight_mean = reader.GetReal("Agent", "fit_weight_mean", -1);
+  double na_weight_mean = reader.GetReal("Agent", "na_weight_mean", -1);
+  double ar_weight_mean = reader.GetReal("Agent", "ar_weight_mean", -1);
+  double weight_concentration =
+      reader.GetReal("Agent", "weight_concentration", 20.0);
   double neighborhood_recency_lambda =
       reader.GetReal("Agent", "neighborhood_recency_lambda", -1.0);
   int neighborhood_prepool_factor =
@@ -298,6 +304,14 @@ int main(int argc, char *argv[]) {
   config.age_damping_min_exponent = age_damping_min_exponent;
   config.max_citable_age = max_citable_age;
   config.unbinned_age_sampling = unbinned_age_sampling;
+  if (pa_weight_mean >= 0 || fit_weight_mean >= 0 || na_weight_mean >= 0 ||
+      ar_weight_mean >= 0) {
+    config.weight_means = {std::max(pa_weight_mean, 0.0),
+                           std::max(fit_weight_mean, 0.0),
+                           std::max(na_weight_mean, 0.0),
+                           std::max(ar_weight_mean, 0.0)};
+  }
+  config.weight_concentration = weight_concentration;
   config.neighborhood_recency_lambda = neighborhood_recency_lambda;
   config.neighborhood_prepool_factor = neighborhood_prepool_factor;
 

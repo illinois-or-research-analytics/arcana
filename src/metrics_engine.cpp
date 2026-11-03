@@ -250,3 +250,44 @@ void MetricsEngine::CalculateAgeDampedExpScores(
     dst_span[i] /= sum;
   }
 }
+
+void MetricsEngine::PopulateDirichletWeightSpans(
+    std::span<double> pa_weight_span, std::span<double> fit_weight_span,
+    std::span<double> num_authors_weight_span,
+    std::span<double> author_reputation_weight_span,
+    const std::vector<double> &means, double concentration) {
+  double mean_total = 0;
+  for (double mean : means) {
+    mean_total += mean;
+  }
+  std::vector<double> normalized_means(4, 0.25);
+  if (mean_total > 0) {
+    for (size_t k = 0; k < 4; k++) {
+      normalized_means[k] = means[k] / mean_total;
+    }
+  }
+#pragma omp parallel for
+  for (size_t i = 0; i < pa_weight_span.size(); i++) {
+    pcg32 &generator = Utils::GetThreadLocalPRNG();
+    double draws[4] = {0, 0, 0, 0};
+    double sum = 0;
+    for (size_t k = 0; k < 4; k++) {
+      if (normalized_means[k] > 0) {
+        std::gamma_distribution<double> gamma_distribution{
+            concentration * normalized_means[k], 1.0};
+        draws[k] = gamma_distribution(generator);
+        sum += draws[k];
+      }
+    }
+    if (sum <= 0) { // all shapes underflowed: fall back to the means
+      for (size_t k = 0; k < 4; k++) {
+        draws[k] = normalized_means[k];
+        sum += draws[k];
+      }
+    }
+    pa_weight_span[i] = draws[0] / sum;
+    fit_weight_span[i] = draws[1] / sum;
+    num_authors_weight_span[i] = draws[2] / sum;
+    author_reputation_weight_span[i] = draws[3] / sum;
+  }
+}
