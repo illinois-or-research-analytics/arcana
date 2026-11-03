@@ -114,6 +114,9 @@ public:
   // exp(-a / recency_lambda). prepool_factor >= 1 widens the 2-hop pool that is
   // collected before the biased down-sampling to neighborhood_sample nodes.
   double recency_lambda = -1.0;
+  // Nodes older than max_citable_age years are dropped from the candidates
+  // (-1 keeps all).
+  int max_citable_age = -1;
   int prepool_factor = 1;
   int num_bins;
   std::vector<int> bin_boundaries;

@@ -43,7 +43,7 @@ public:
   int MakeUniformRandomCitationsFromGraph(
       Graph *graph, const std::vector<int> &reverse_continuous_node_mapping,
       std::vector<int> &generator_nodes, std::span<int> citations,
-      int num_cited_so_far, int num_citations);
+      int num_cited_so_far, int num_citations, int current_year);
   /*
   Input: Graph *graph, const std::vector<int>
   &continuous_node_mapping, int current_year, const std::vector<int>

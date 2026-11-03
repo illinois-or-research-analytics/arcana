@@ -475,7 +475,8 @@ ABM::GetGeneratorNodesFromSet(std::vector<int> &eligible_generator_nodes) {
 }
 
 std::vector<int> ABM::GetGeneratorNodes(
-    Graph *graph, const std::vector<int> &reverse_continuous_node_mapping) {
+    Graph *graph, const std::vector<int> &reverse_continuous_node_mapping,
+    int current_year) {
   std::vector<int> generator_nodes;
   std::uniform_int_distribution<int> generator_uniform_distribution{
       0, (int)(graph->GetNodeSet().size() - 1)};
@@ -485,6 +486,13 @@ std::vector<int> ABM::GetGeneratorNodes(
     int continuous_generator_node = generator_uniform_distribution(generator);
     int generator_node =
         reverse_continuous_node_mapping[continuous_generator_node];
+    for (int tries = 0; this->max_citable_age >= 0 && tries < 1000 &&
+                        current_year - graph->GetYear(generator_node) >
+                            this->max_citable_age;
+         tries++) {
+      continuous_generator_node = generator_uniform_distribution(generator);
+      generator_node = reverse_continuous_node_mapping[continuous_generator_node];
+    }
     generator_nodes.push_back(generator_node);
   }
   return generator_nodes;
@@ -1089,7 +1097,7 @@ void ABM::RunSimulationLoop() {
             this->graph, new_node, generator_nodes, explicit_cluster_id);
       } else {
         std::vector<int> generator_nodes = this->GetGeneratorNodes(
-            this->graph, this->reverse_continuous_node_mapping);
+            this->graph, this->reverse_continuous_node_mapping, current_year);
         this->UpdateGraphAttributesGeneratorNodes(
             this->graph, new_node, generator_nodes, explicit_cluster_id);
       }
@@ -1416,7 +1424,7 @@ void ABM::RunSimulationLoop() {
           this->citation_engine->MakeUniformRandomCitationsFromGraph(
               this->graph, this->reverse_continuous_node_mapping,
               generator_nodes, citations, num_actually_cited,
-              num_fully_random_cited);
+              num_fully_random_cited, current_year);
       local_prev_time =
           this->logger.LocalLogTime(local_parallel_stage_time_vec,
                                     local_prev_time, "make random citations");

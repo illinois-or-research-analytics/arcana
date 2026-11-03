@@ -35,10 +35,11 @@ int CitationEngine::MakeSameYearCitations(
 int CitationEngine::MakeUniformRandomCitationsFromGraph(
     Graph *graph, const std::vector<int> &reverse_continuous_node_mapping,
     std::vector<int> &generator_nodes, std::span<int> citations,
-    int num_cited_so_far, int num_citations) {
+    int num_cited_so_far, int num_citations, int current_year) {
   if (num_citations <= 0) {
     return 0;
   }
+  const int max_citable_age = this->neighborhood_search->max_citable_age;
   int actual_num_cited = num_citations;
   std::set<int> selected;
   for (int i = 0; i < num_cited_so_far; i++) {
@@ -51,7 +52,9 @@ int CitationEngine::MakeUniformRandomCitationsFromGraph(
     actual_num_cited = (int)graph->GetNodeSet().size() - (int)selected.size();
     int current_citation_index = 0;
     for (auto const &node_id : graph->GetNodeSet()) {
-      if (!selected.contains(node_id)) {
+      if (!selected.contains(node_id) &&
+          (max_citable_age < 0 ||
+           current_year - graph->GetYear(node_id) <= max_citable_age)) {
         citations[num_cited_so_far + current_citation_index] = node_id;
         selected.insert(node_id);
         current_citation_index++;
@@ -72,7 +75,10 @@ int CitationEngine::MakeUniformRandomCitationsFromGraph(
                   << " from continous index: "
                   << std::to_string(current_citation) << std::endl;
       }
-      if (!selected.contains(current_cited_node)) {
+      if (!selected.contains(current_cited_node) &&
+          (max_citable_age < 0 ||
+           current_year - graph->GetYear(current_cited_node) <=
+               max_citable_age)) {
         citations[num_cited_so_far + current_citation_index] =
             current_cited_node;
         selected.insert(current_cited_node);

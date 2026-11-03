@@ -84,6 +84,7 @@ struct SimulationConfig {
   int age_damping_start = -1;
   double age_damping_tau = 10.0;
   double age_damping_min_exponent = 0.0;
+  int max_citable_age = -1;
   double neighborhood_recency_lambda = -1.0;
   int neighborhood_prepool_factor = 1;
 };
@@ -181,6 +182,7 @@ public:
         age_damping_start(config.age_damping_start),
         age_damping_tau(config.age_damping_tau),
         age_damping_min_exponent(config.age_damping_min_exponent),
+        max_citable_age(config.max_citable_age),
         neighborhood_recency_lambda(config.neighborhood_recency_lambda),
         neighborhood_prepool_factor(config.neighborhood_prepool_factor) {
     // initial validation
@@ -214,6 +216,7 @@ public:
         this->recency_bins, this->use_alpha, this->neighborhood_sample);
     this->neighborhood_search->recency_lambda = this->neighborhood_recency_lambda;
     this->neighborhood_search->prepool_factor = this->neighborhood_prepool_factor;
+    this->neighborhood_search->max_citable_age = this->max_citable_age;
     this->citation_engine =
         new CitationEngine(this->null_cartel, this->neighborhood_search);
     omp_set_num_threads(this->num_processors);
@@ -311,7 +314,8 @@ public:
   */
   std::vector<int>
   GetGeneratorNodes(Graph *graph,
-                    const std::vector<int> &reverse_continuous_node_mapping);
+                    const std::vector<int> &reverse_continuous_node_mapping,
+                    int current_year);
   /*
   Input: Graph *graph, int graph_size, const std::unordered_map<int, int>
   &reverse_continuous_node_mapping, std::span<int> in_degree_span,
@@ -654,6 +658,7 @@ protected:
   int age_damping_start; // -1 disables age damping of the in-degree score
   double age_damping_tau;
   double age_damping_min_exponent; // exponent the in-degree score decays towards
+  int max_citable_age; // papers older than this many years cannot be cited (-1 = off)
   double neighborhood_recency_lambda; // <= 0: uniform neighborhood sampling
   int neighborhood_prepool_factor;
 

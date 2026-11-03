@@ -192,6 +192,10 @@ NeighborhoodSearch::BinNeighborhood(Graph *graph, int current_year,
   std::vector<std::vector<int>> binned_neighborhood(this->num_bins);
   for (size_t i = 0; i < n_hop_list.size(); i++) {
     int current_node = n_hop_list[i];
+    if (this->max_citable_age >= 0 &&
+        current_year - graph->GetYear(current_node) > this->max_citable_age) {
+      continue;
+    }
     int current_bin = GetBinIndex(graph, current_node, current_year);
     if ((size_t)current_bin < binned_neighborhood.size()) {
       binned_neighborhood[current_bin].push_back(current_node);
