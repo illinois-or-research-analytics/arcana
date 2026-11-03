@@ -1,0 +1,33 @@
+#!/bin/bash
+OUTPUT=$(readlink -f ./output)
+ERRORS=$(readlink -f ./errors)
+
+mkdir -p "${OUTPUT}" "${ERRORS}"
+
+module purge
+module load gcc/13.3.0 openmpi/5.0.1
+
+export OMP_NUM_THREADS=32
+export OMP_PROC_BIND=spread
+export OMP_PLACES=threads
+
+unset OMPI_MCA_ras_base_verbose
+
+# Point storage to node-local NVMe scratch on the compute node (clean previous run data):
+srun --ntasks-per-node=1 rm -rf /tmp/$USER/ladybug_data*
+srun --ntasks-per-node=1 mkdir -p /tmp/$USER/ladybug_data
+
+# Compile binary fresh
+mkdir -p build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release /u/chackoge/scratch/cantatas
+make -j 32
+cd ..
+
+# Run simulation on single compute node
+/usr/bin/time -v ./build/bin/abm \
+  --config ./config.ini \
+  --db-path /tmp/$USER/ladybug_data 2>${ERRORS}/abm.err 1>${OUTPUT}/abm.out
+
+# Delete build folder once output has been generated
+rm -rf ./build
