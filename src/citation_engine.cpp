@@ -450,3 +450,69 @@ int CitationEngine::GetNumCartelCitations(
   }
   return total_num_citations_neighborhood;
 }
+
+int CitationEngine::MakeAgeSampledCitations(
+    Graph *graph, const std::vector<int> &continuous_node_mapping,
+    int current_year, const std::vector<int> &candidate_nodes,
+    std::span<int> citations, const NodeMetrics &metrics,
+    const AgentWeights &weights, int current_graph_size, int num_citations,
+    const std::vector<double> &age_pmf, int max_citable_age) {
+  if (num_citations <= 0 || candidate_nodes.empty() || age_pmf.size() < 2) {
+    return 0;
+  }
+  const int max_age = static_cast<int>(age_pmf.size()) - 1;
+  thread_local std::vector<std::vector<int>> by_age;
+  thread_local std::vector<int> allocated;
+  if (static_cast<int>(by_age.size()) < max_age + 1) {
+    by_age.resize(max_age + 1);
+  }
+  for (auto &nodes : by_age) {
+    nodes.clear();
+  }
+  for (int node : candidate_nodes) {
+    int age = current_year - graph->GetYear(node);
+    if (age < 1 || age > max_age ||
+        (max_citable_age >= 0 && age > max_citable_age)) {
+      continue;
+    }
+    by_age[age].push_back(node);
+  }
+  allocated.assign(max_age + 1, 0);
+  pcg32 &generator = Utils::GetThreadLocalPRNG();
+  std::uniform_real_distribution<double> uniform{0.0, 1.0};
+  for (int remaining = num_citations; remaining > 0; remaining--) {
+    double total = 0;
+    for (int age = 1; age <= max_age; age++) {
+      if (allocated[age] < static_cast<int>(by_age[age].size())) {
+        total += age_pmf[age];
+      }
+    }
+    if (total <= 0) {
+      break;
+    }
+    double draw = uniform(generator) * total;
+    double cumulative = 0;
+    int chosen = -1;
+    for (int age = 1; age <= max_age; age++) {
+      if (allocated[age] < static_cast<int>(by_age[age].size()) &&
+          age_pmf[age] > 0) {
+        chosen = age;
+        cumulative += age_pmf[age];
+        if (draw < cumulative) {
+          break;
+        }
+      }
+    }
+    allocated[chosen]++;
+  }
+  int num_cited = 0;
+  for (int age = 1; age <= max_age; age++) {
+    if (allocated[age] > 0) {
+      num_cited += MakeCitations(graph, continuous_node_mapping, current_year,
+                                 by_age[age], citations.subspan(num_cited),
+                                 metrics, weights, current_graph_size,
+                                 allocated[age]);
+    }
+  }
+  return num_cited;
+}

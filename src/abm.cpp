@@ -1367,6 +1367,21 @@ void ABM::RunSimulationLoop() {
           sampled_neighborhood_sizes_map[i] +=
               n_hop_map[current_neighborhood_index].size();
 
+          if (this->unbinned_age_sampling) {
+            int unbinned_quota =
+                (current_neighborhood_index <
+                 num_citations_per_neighborhood.size())
+                    ? num_citations_per_neighborhood[current_neighborhood_index]
+                    : 0;
+            num_actually_cited += this->citation_engine->MakeAgeSampledCitations(
+                this->graph, this->continuous_node_mapping, current_year,
+                n_hop_map[current_neighborhood_index],
+                citations.subspan(num_actually_cited), metrics, weights,
+                current_graph_size, unbinned_quota, this->age_pmf,
+                this->max_citable_age);
+            continue;
+          }
+
           std::vector<std::vector<int>> binned_neighborhood =
               this->neighborhood_search->BinNeighborhood(
                   this->graph, current_year,

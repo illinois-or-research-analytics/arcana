@@ -224,6 +224,8 @@ int main(int argc, char *argv[]) {
   double age_damping_min_exponent =
       reader.GetReal("Agent", "age_damping_min_exponent", 0.0);
   int max_citable_age = reader.GetInteger("Agent", "max_citable_age", -1);
+  bool unbinned_age_sampling =
+      reader.GetBoolean("Agent", "unbinned_age_sampling", false);
   double neighborhood_recency_lambda =
       reader.GetReal("Agent", "neighborhood_recency_lambda", -1.0);
   int neighborhood_prepool_factor =
@@ -295,6 +297,7 @@ int main(int argc, char *argv[]) {
   config.age_damping_tau = age_damping_tau;
   config.age_damping_min_exponent = age_damping_min_exponent;
   config.max_citable_age = max_citable_age;
+  config.unbinned_age_sampling = unbinned_age_sampling;
   config.neighborhood_recency_lambda = neighborhood_recency_lambda;
   config.neighborhood_prepool_factor = neighborhood_prepool_factor;
 

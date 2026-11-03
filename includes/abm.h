@@ -87,6 +87,7 @@ struct SimulationConfig {
   int max_citable_age = -1;
   double neighborhood_recency_lambda = -1.0;
   int neighborhood_prepool_factor = 1;
+  bool unbinned_age_sampling = false;
 };
 
 class ABM {
@@ -183,6 +184,7 @@ public:
         age_damping_tau(config.age_damping_tau),
         age_damping_min_exponent(config.age_damping_min_exponent),
         max_citable_age(config.max_citable_age),
+        unbinned_age_sampling(config.unbinned_age_sampling),
         neighborhood_recency_lambda(config.neighborhood_recency_lambda),
         neighborhood_prepool_factor(config.neighborhood_prepool_factor) {
     // initial validation
@@ -203,6 +205,18 @@ public:
     this->out_degree_bag_vec = Utils::ParseOutDegreeBag(this->out_degree_bag);
     this->recency_counts_map =
         Utils::ParseRecencyProbabilities(this->recency_table);
+    if (this->unbinned_age_sampling) {
+      int max_table_age = 0;
+      double total_count = 0;
+      for (const auto &[year_diff, count] : this->recency_counts_map) {
+        max_table_age = std::max(max_table_age, year_diff);
+        total_count += count;
+      }
+      this->age_pmf.assign(max_table_age + 1, 0.0);
+      for (const auto &[year_diff, count] : this->recency_counts_map) {
+        this->age_pmf[year_diff] = count / total_count;
+      }
+    }
     if (this->planted_nodes != "") {
       this->planted_nodes_map = Utils::ParsePlantedNodes(this->planted_nodes);
     }
@@ -659,6 +673,11 @@ protected:
   double age_damping_tau;
   double age_damping_min_exponent; // exponent the in-degree score decays towards
   int max_citable_age; // papers older than this many years cannot be cited (-1 = off)
+  // When true, each citation draws an age from age_pmf (the recency table as a
+  // per-year distribution) restricted to ages that still have candidates, then
+  // scores candidates of that age. Replaces the recency bins.
+  bool unbinned_age_sampling;
+  std::vector<double> age_pmf;
   double neighborhood_recency_lambda; // <= 0: uniform neighborhood sampling
   int neighborhood_prepool_factor;
 

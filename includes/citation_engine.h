@@ -40,6 +40,21 @@ public:
   (number of citations made) Description: Randomly selects target nodes from the
   entire graph's history uniformly, ignoring metrics.
   */
+  /*
+  Input: candidate_nodes, num_citations, age_pmf (probability of citing a paper
+  of age a, index 0 unused), max_citable_age (-1 = off) Output: number of
+  citations written Description: Draws an age for each citation from age_pmf
+  restricted to ages that still have unused candidates, so an age without
+  candidates passes its probability to the other ages in proportion to age_pmf.
+  The candidates of each drawn age are then scored and sampled without
+  replacement with MakeCitations.
+  */
+  int MakeAgeSampledCitations(
+      Graph *graph, const std::vector<int> &continuous_node_mapping,
+      int current_year, const std::vector<int> &candidate_nodes,
+      std::span<int> citations, const NodeMetrics &metrics,
+      const AgentWeights &weights, int current_graph_size, int num_citations,
+      const std::vector<double> &age_pmf, int max_citable_age);
   int MakeUniformRandomCitationsFromGraph(
       Graph *graph, const std::vector<int> &reverse_continuous_node_mapping,
       std::vector<int> &generator_nodes, std::span<int> citations,
