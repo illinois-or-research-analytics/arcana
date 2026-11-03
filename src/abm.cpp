@@ -1196,10 +1196,36 @@ void ABM::RunSimulationLoop() {
     std::vector<std::vector<std::pair<std::string, int>>>
         thread_local_parallel_stage_time_vec(max_threads);
     std::vector<std::vector<int>> thread_citations_vec(max_threads);
+    std::vector<std::vector<int>> thread_scratch_bin_vec(max_threads);
     for (int t = 0; t < max_threads; ++t) {
       thread_local_new_edges_vec[t].reserve(100);
       thread_local_parallel_stage_time_vec[t].reserve(20);
       thread_citations_vec[t].resize(this->max_out_degree + 1, 0);
+    }
+
+    // Precompute recency bins for historical cluster nodes (year < current_year)
+    // to avoid redundant O(|cluster|) binning per agent.
+    std::unordered_map<int, std::vector<std::vector<int>>> cluster_binned_cache;
+    std::unordered_map<int, int> cluster_historical_sizes;
+    if (this->use_alpha) {
+      for (const auto &[cid, _] : local_cluster_new_agents) {
+        if (cid >= 0) {
+          const auto &cluster_nodes = this->graph->GetClusterNodes(cid);
+          auto &bins = cluster_binned_cache[cid];
+          bins.resize(this->neighborhood_search->num_bins);
+          int hist_count = 0;
+          for (int node : cluster_nodes) {
+            if (this->graph->GetYear(node) < current_year) {
+              int bin_idx = this->neighborhood_search->GetBinIndex(this->graph, node, current_year);
+              if (bin_idx >= 0 && bin_idx < this->neighborhood_search->num_bins) {
+                bins[bin_idx].push_back(node);
+                hist_count++;
+              }
+            }
+          }
+          cluster_historical_sizes[cid] = hist_count;
+        }
+      }
     }
 
     std::vector<std::pair<std::string, int>> parallel_stage_time_vec;
@@ -1251,7 +1277,27 @@ void ABM::RunSimulationLoop() {
           this->neighborhood_search->GetNeighborhoodMap(
               this->graph, current_year, generator_nodes, num_hops);
 
+      bool use_cluster_fastpath = false;
+      int cluster_hist_size = 0;
       if (alpha > 0 && cluster_id >= 0 &&
+          this->graph->GetClusterSize(cluster_id, current_year) >= this->theta) {
+        auto hist_it = cluster_historical_sizes.find(cluster_id);
+        if (hist_it != cluster_historical_sizes.end()) {
+          cluster_hist_size = hist_it->second;
+          use_cluster_fastpath = true;
+          if (n_hop_map.size() > 2) {
+            std::vector<int> pruned_2_hop;
+            for (int node : n_hop_map[2]) {
+              if (this->graph->GetCommunityAssignment(node) != cluster_id) {
+                pruned_2_hop.push_back(node);
+              }
+            }
+            n_hop_map[2] = std::move(pruned_2_hop);
+          }
+        }
+      }
+
+      if (!use_cluster_fastpath && alpha > 0 && cluster_id >= 0 &&
           this->graph->GetClusterSize(cluster_id, current_year) >= this->theta) {
         const std::vector<int> &cluster_nodes =
             this->graph->GetClusterNodes(cluster_id);
@@ -1329,59 +1375,204 @@ void ABM::RunSimulationLoop() {
       std::set<int> cited_elements(citations.begin(),
                                    citations.begin() + num_actually_cited);
       std::vector<std::vector<int>> filtered_n_hop_map(n_hop_map.size());
-      for (size_t distance = 1; distance < n_hop_map.size(); ++distance) {
-        filtered_n_hop_map[distance].reserve(this->neighborhood_sample);
-        for (int node_id : n_hop_map[distance]) {
-          if (!cited_elements.contains(node_id)) {
-            filtered_n_hop_map[distance].push_back(node_id);
+      if (use_cluster_fastpath) {
+        // Distance 1 is handled via pre-binned cache; only filter distance >= 2
+        for (size_t distance = 2; distance < n_hop_map.size(); ++distance) {
+          filtered_n_hop_map[distance].reserve(this->neighborhood_sample);
+          for (int node_id : n_hop_map[distance]) {
+            if (!cited_elements.contains(node_id)) {
+              filtered_n_hop_map[distance].push_back(node_id);
+            }
+          }
+        }
+      } else {
+        for (size_t distance = 1; distance < n_hop_map.size(); ++distance) {
+          filtered_n_hop_map[distance].reserve(this->neighborhood_sample);
+          for (int node_id : n_hop_map[distance]) {
+            if (!cited_elements.contains(node_id)) {
+              filtered_n_hop_map[distance].push_back(node_id);
+            }
           }
         }
       }
       n_hop_map = std::move(filtered_n_hop_map);
       if (remaining_citation_quota > 0) {
-        std::vector<int> num_citations_per_neighborhood =
-            this->neighborhood_search->GetNumCitationsPerNeighborhood(
-                alpha, remaining_citation_quota, n_hop_map);
+        std::vector<int> num_citations_per_neighborhood;
+        size_t hop1_size = 0;
+        size_t hop2_size = (n_hop_map.size() > 2) ? n_hop_map[2].size() : 0;
+        if (use_cluster_fastpath) {
+          int excluded_count_hop1 = 0;
+          for (int g : generator_nodes) {
+            if (this->graph->GetCommunityAssignment(g) == cluster_id && this->graph->GetYear(g) < current_year) {
+              excluded_count_hop1++;
+            }
+          }
+          for (int c : cited_elements) {
+            if (std::find(generator_nodes.begin(), generator_nodes.end(), c) == generator_nodes.end() &&
+                this->graph->GetCommunityAssignment(c) == cluster_id && this->graph->GetYear(c) < current_year) {
+              excluded_count_hop1++;
+            }
+          }
+          hop1_size = static_cast<size_t>(std::max(0, cluster_hist_size - excluded_count_hop1));
+          num_citations_per_neighborhood =
+              this->neighborhood_search->GetNumCitationsPerNeighborhood(
+                  alpha, remaining_citation_quota, hop1_size, hop2_size);
+        } else {
+          num_citations_per_neighborhood =
+              this->neighborhood_search->GetNumCitationsPerNeighborhood(
+                  alpha, remaining_citation_quota, n_hop_map);
+        }
+
         for (size_t current_neighborhood_index = 1;
              current_neighborhood_index < n_hop_map.size();
              current_neighborhood_index++) { // 2 iter if use alpha true
-          sampled_neighborhood_sizes_map[i] +=
-              n_hop_map[current_neighborhood_index].size();
 
-          std::vector<std::vector<int>> binned_neighborhood =
-              this->neighborhood_search->BinNeighborhood(
-                  this->graph, current_year,
-                  n_hop_map[current_neighborhood_index]);
+          if (use_cluster_fastpath && current_neighborhood_index == 1) {
+            sampled_neighborhood_sizes_map[i] += hop1_size;
 
-          local_prev_time =
-              this->logger.LocalLogTime(local_parallel_stage_time_vec,
-                                        local_prev_time, "bin neighborhood");
+            std::vector<int> bin_sizes(this->neighborhood_search->num_bins, 0);
+            const auto &cached_bins = cluster_binned_cache[cluster_id];
+            for (int b = 0; b < this->neighborhood_search->num_bins; ++b) {
+              bin_sizes[b] = static_cast<int>(cached_bins[b].size());
+            }
 
-          int neighborhood_quota = (current_neighborhood_index < num_citations_per_neighborhood.size())
-                                       ? num_citations_per_neighborhood[current_neighborhood_index]
-                                       : 0;
-          std::vector<int> outdegree_per_bin_map =
-              this->neighborhood_search->BinOutdegrees(
-                  binned_neighborhood,
-                  neighborhood_quota,
-                  binned_recency_probabilities);
+            std::vector<int> excluded_nodes;
+            for (int g : generator_nodes) {
+              if (this->graph->GetCommunityAssignment(g) == cluster_id && this->graph->GetYear(g) < current_year) {
+                int b = this->neighborhood_search->GetBinIndex(this->graph, g, current_year);
+                if (b >= 0 && b < this->neighborhood_search->num_bins && bin_sizes[b] > 0) {
+                  bin_sizes[b]--;
+                  excluded_nodes.push_back(g);
+                }
+              }
+            }
+            for (int c : cited_elements) {
+              if (std::find(generator_nodes.begin(), generator_nodes.end(), c) == generator_nodes.end() &&
+                  this->graph->GetCommunityAssignment(c) == cluster_id && this->graph->GetYear(c) < current_year) {
+                int b = this->neighborhood_search->GetBinIndex(this->graph, c, current_year);
+                if (b >= 0 && b < this->neighborhood_search->num_bins && bin_sizes[b] > 0) {
+                  bin_sizes[b]--;
+                  excluded_nodes.push_back(c);
+                }
+              }
+            }
 
-          for (int bin_index = 0;
-               bin_index < this->neighborhood_search->num_bins - 1;
-               bin_index++) { // if there's only 1 bin then this is always false
-            num_actually_cited += this->citation_engine->MakeCitations(
-                this->graph, this->continuous_node_mapping, current_year,
-                binned_neighborhood[bin_index],
-                citations.subspan(num_actually_cited), metrics, weights,
-                current_graph_size, outdegree_per_bin_map[bin_index]);
-          }
-          num_actually_cited +=
-              this->citation_engine->MakeUniformRandomCitations(
+            local_prev_time =
+                this->logger.LocalLogTime(local_parallel_stage_time_vec,
+                                          local_prev_time, "bin neighborhood");
+
+            int neighborhood_quota = (current_neighborhood_index < num_citations_per_neighborhood.size())
+                                         ? num_citations_per_neighborhood[current_neighborhood_index]
+                                         : 0;
+            std::vector<int> outdegree_per_bin_map =
+                this->neighborhood_search->BinOutdegrees(
+                    bin_sizes,
+                    neighborhood_quota,
+                    binned_recency_probabilities);
+
+            for (int bin_index = 0;
+                 bin_index < this->neighborhood_search->num_bins - 1;
+                 bin_index++) {
+              int quota = outdegree_per_bin_map[bin_index];
+              if (quota <= 0) continue;
+
+              const std::vector<int> *cand_ptr = &cached_bins[bin_index];
+              auto &scratch_bin = thread_scratch_bin_vec[thread_id];
+              if (bin_sizes[bin_index] < (int)cached_bins[bin_index].size()) {
+                scratch_bin.clear();
+                scratch_bin.reserve(bin_sizes[bin_index]);
+                for (int node : cached_bins[bin_index]) {
+                  bool exclude = false;
+                  for (int ex : excluded_nodes) {
+                    if (node == ex) {
+                      exclude = true;
+                      break;
+                    }
+                  }
+                  if (!exclude) {
+                    scratch_bin.push_back(node);
+                  }
+                }
+                cand_ptr = &scratch_bin;
+              }
+
+              num_actually_cited += this->citation_engine->MakeCitations(
                   this->graph, this->continuous_node_mapping, current_year,
-                  binned_neighborhood[this->neighborhood_search->num_bins - 1],
-                  citations.subspan(num_actually_cited), current_graph_size,
-                  outdegree_per_bin_map[this->neighborhood_search->num_bins -
-                                        1]);
+                  *cand_ptr,
+                  citations.subspan(num_actually_cited), metrics, weights,
+                  current_graph_size, quota);
+            }
+
+            int last_bin = this->neighborhood_search->num_bins - 1;
+            int last_quota = outdegree_per_bin_map[last_bin];
+            if (last_quota > 0) {
+              const std::vector<int> *cand_ptr = &cached_bins[last_bin];
+              auto &scratch_bin = thread_scratch_bin_vec[thread_id];
+              if (bin_sizes[last_bin] < (int)cached_bins[last_bin].size()) {
+                scratch_bin.clear();
+                scratch_bin.reserve(bin_sizes[last_bin]);
+                for (int node : cached_bins[last_bin]) {
+                  bool exclude = false;
+                  for (int ex : excluded_nodes) {
+                    if (node == ex) {
+                      exclude = true;
+                      break;
+                    }
+                  }
+                  if (!exclude) {
+                    scratch_bin.push_back(node);
+                  }
+                }
+                cand_ptr = &scratch_bin;
+              }
+
+              num_actually_cited +=
+                  this->citation_engine->MakeUniformRandomCitations(
+                      this->graph, this->continuous_node_mapping, current_year,
+                      *cand_ptr,
+                      citations.subspan(num_actually_cited), current_graph_size,
+                      last_quota);
+            }
+
+          } else {
+            sampled_neighborhood_sizes_map[i] +=
+                n_hop_map[current_neighborhood_index].size();
+
+            std::vector<std::vector<int>> binned_neighborhood =
+                this->neighborhood_search->BinNeighborhood(
+                    this->graph, current_year,
+                    n_hop_map[current_neighborhood_index]);
+
+            local_prev_time =
+                this->logger.LocalLogTime(local_parallel_stage_time_vec,
+                                          local_prev_time, "bin neighborhood");
+
+            int neighborhood_quota = (current_neighborhood_index < num_citations_per_neighborhood.size())
+                                         ? num_citations_per_neighborhood[current_neighborhood_index]
+                                         : 0;
+            std::vector<int> outdegree_per_bin_map =
+                this->neighborhood_search->BinOutdegrees(
+                    binned_neighborhood,
+                    neighborhood_quota,
+                    binned_recency_probabilities);
+
+            for (int bin_index = 0;
+                 bin_index < this->neighborhood_search->num_bins - 1;
+                 bin_index++) { // if there's only 1 bin then this is always false
+              num_actually_cited += this->citation_engine->MakeCitations(
+                  this->graph, this->continuous_node_mapping, current_year,
+                  binned_neighborhood[bin_index],
+                  citations.subspan(num_actually_cited), metrics, weights,
+                  current_graph_size, outdegree_per_bin_map[bin_index]);
+            }
+            num_actually_cited +=
+                this->citation_engine->MakeUniformRandomCitations(
+                    this->graph, this->continuous_node_mapping, current_year,
+                    binned_neighborhood[this->neighborhood_search->num_bins - 1],
+                    citations.subspan(num_actually_cited), current_graph_size,
+                    outdegree_per_bin_map[this->neighborhood_search->num_bins -
+                                          1]);
+          }
         }
       }
       for (int j = 0; j < num_actually_cited; j++) {

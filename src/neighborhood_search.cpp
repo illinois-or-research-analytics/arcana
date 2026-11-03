@@ -84,27 +84,41 @@ void NeighborhoodSearch::BuildBinLUT() {
 std::vector<int> NeighborhoodSearch::GetNumCitationsPerNeighborhood(
     double alpha, int total_num_citations_neighborhood,
     const std::vector<std::vector<int>> &n_hop_map) {
-  std::vector<int> num_citations_per_neighborhood(n_hop_map.size(), 0);
-  if (n_hop_map.size() >= 3) {
-    int total_num_citations_neighborhood_clamped =
-        std::min((int)(n_hop_map[1].size() + n_hop_map[2].size()),
-                 total_num_citations_neighborhood);
-    num_citations_per_neighborhood[1] =
-        std::min((int)(total_num_citations_neighborhood_clamped * alpha),
-                 (int)n_hop_map[1].size());
-    num_citations_per_neighborhood[2] =
-        std::min(total_num_citations_neighborhood_clamped -
-                     num_citations_per_neighborhood[1],
-                 (int)n_hop_map[2].size());
-  } else if (n_hop_map.size() >= 2) {
-    num_citations_per_neighborhood[1] = std::min(
-        total_num_citations_neighborhood, (int)n_hop_map[1].size());
-  }
+  size_t hop1_size = (n_hop_map.size() > 1) ? n_hop_map[1].size() : 0;
+  size_t hop2_size = (n_hop_map.size() > 2) ? n_hop_map[2].size() : 0;
+  return GetNumCitationsPerNeighborhood(alpha, total_num_citations_neighborhood,
+                                        hop1_size, hop2_size);
+}
+
+std::vector<int> NeighborhoodSearch::GetNumCitationsPerNeighborhood(
+    double alpha, int total_num_citations_neighborhood,
+    size_t hop1_size, size_t hop2_size) {
+  std::vector<int> num_citations_per_neighborhood(3, 0);
+  int total_num_citations_neighborhood_clamped =
+      std::min((int)(hop1_size + hop2_size), total_num_citations_neighborhood);
+  num_citations_per_neighborhood[1] =
+      std::min((int)(total_num_citations_neighborhood_clamped * alpha),
+               (int)hop1_size);
+  num_citations_per_neighborhood[2] =
+      std::min(total_num_citations_neighborhood_clamped -
+                   num_citations_per_neighborhood[1],
+               (int)hop2_size);
   return num_citations_per_neighborhood;
 }
 
 std::vector<int> NeighborhoodSearch::BinOutdegrees(
     const std::vector<std::vector<int>> &binned_neighborhood,
+    int total_outdegree,
+    const std::vector<double> &binned_recency_probabilities) {
+  std::vector<int> binned_sizes(binned_neighborhood.size());
+  for (size_t i = 0; i < binned_neighborhood.size(); ++i) {
+    binned_sizes[i] = static_cast<int>(binned_neighborhood[i].size());
+  }
+  return BinOutdegrees(binned_sizes, total_outdegree, binned_recency_probabilities);
+}
+
+std::vector<int> NeighborhoodSearch::BinOutdegrees(
+    const std::vector<int> &binned_neighborhood_sizes,
     int total_outdegree,
     const std::vector<double> &binned_recency_probabilities) {
   std::vector<int> target_outdegree_per_bin_map(this->num_bins, 0);
@@ -133,15 +147,17 @@ std::vector<int> NeighborhoodSearch::BinOutdegrees(
     remaining_outdegree--;
   }
   for (int bin_index = 0; bin_index < this->num_bins; bin_index++) {
-    int binned_size = ((size_t)bin_index < binned_neighborhood.size())
-                          ? static_cast<int>(binned_neighborhood[bin_index].size())
+    int binned_size = ((size_t)bin_index < binned_neighborhood_sizes.size())
+                          ? binned_neighborhood_sizes[bin_index]
                           : 0;
     int current_uncited_num_nodes =
         target_outdegree_per_bin_map[bin_index] - binned_size;
     if (current_uncited_num_nodes > 0) {
       for (int sweep_index = bin_index - 1;
            sweep_index >= 0 && current_uncited_num_nodes > 0; sweep_index--) {
-        int sweep_binned_size = static_cast<int>(binned_neighborhood[sweep_index].size());
+        int sweep_binned_size = (sweep_index < (int)binned_neighborhood_sizes.size())
+                                    ? binned_neighborhood_sizes[sweep_index]
+                                    : 0;
         if (target_outdegree_per_bin_map[sweep_index] < sweep_binned_size) {
           int current_citable = std::min(
               current_uncited_num_nodes,
@@ -154,7 +170,9 @@ std::vector<int> NeighborhoodSearch::BinOutdegrees(
       for (int sweep_index = bin_index + 1;
            sweep_index < this->num_bins && current_uncited_num_nodes > 0;
            sweep_index++) {
-        int sweep_binned_size = static_cast<int>(binned_neighborhood[sweep_index].size());
+        int sweep_binned_size = (sweep_index < (int)binned_neighborhood_sizes.size())
+                                    ? binned_neighborhood_sizes[sweep_index]
+                                    : 0;
         if (target_outdegree_per_bin_map[sweep_index] < sweep_binned_size) {
           int current_citable = std::min(
               current_uncited_num_nodes,
