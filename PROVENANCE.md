@@ -8,6 +8,14 @@
 - The `includes/` and `src/` trees on the cluster build used for all baseline runs
   (`/u/chackoge/scratch/cantatas`) were identical to this commit.
 
+## Relationship to CantataS and merge-back
+
+CantataS is the reference model and runs in shared or distributed memory. ARCANA is an experimental extension that may be
+merged back into CantataS one day. Fixes to the shared core (for example the MPI cluster-membership issue, issue #1) are
+made in CantataS first and then merged into ARCANA from `hkohli/optimizations`. When proposing ARCANA features for
+CantataS, the two options that proved useful (unbinned age sampling and expected-value weights) can be separated from the
+experimental ones that did not help (commits 1 to 3 below).
+
 ## Changes, in order (one commit each)
 
 Each change was made in its own copy of the source on the Illinois Campus Cluster and used for the runs listed.

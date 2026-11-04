@@ -4,6 +4,13 @@
 derived from [CantataS](https://github.com/illinois-or-research-analytics/cantatas). Status: research prototype, private,
 single-node runs only.
 
+## Relationship to CantataS
+
+CantataS is the reference model: it must run in shared-memory and distributed (MPI) mode, and fixes to the core model
+are made there first and then brought into ARCANA. ARCANA is an experimental extension that may be merged back into
+CantataS one day. To keep that possible, every ARCANA change is gated by a config option that is off by default and sits
+in its own commit (see [PROVENANCE.md](PROVENANCE.md)).
+
 ## What is different from CantataS
 
 1. **Unbinned age sampling** (`unbinned_age_sampling=true`). Each citation draws the age of the cited paper from the
@@ -37,8 +44,9 @@ Same build as CantataS (CMake, GCC 13, OpenMPI). The runs reported in [PROVENANC
 `use_distributed=false`, the LadyBugDB backend and 32 OpenMP threads on one node. See `experiments/configs/` and
 `experiments/batch_script.run.example`; paths in the configs point at the Illinois Campus Cluster.
 
-**Distributed (MPI) mode is not verified for the ARCANA changes.** The changes sit in code shared by both modes, but the
-per-rank availability of node years and the broadcast of the new weights have not been checked.
+**Distributed (MPI) mode is not verified for the ARCANA changes.** The changes sit in code shared by both modes. A 4-node
+MPI run completes and passes integrity checks, but with `theta=50` its within-cluster citation fraction is 40.7% against
+49.7% on one node. This is traced to per-rank cluster member lists (see issue #1); the fix is being made in CantataS first.
 
 ## Caveat
 
