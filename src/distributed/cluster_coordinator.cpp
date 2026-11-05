@@ -163,6 +163,7 @@ void ClusterCoordinator::BroadcastNewNodeMetadata(
     std::vector<int> &cluster_ids,
     std::vector<int> &author_ids,
     std::vector<int> &generator_nodes,
+    AgentBatchAttributes &attrs,
     int root) {
 #if DISTRIBUTED_HAS_MPI
   if (mpi_enabled_ && world_size_ > 1) {
@@ -173,12 +174,34 @@ void ClusterCoordinator::BroadcastNewNodeMetadata(
       cluster_ids.resize(count);
       author_ids.resize(count);
       generator_nodes.resize(count);
+      attrs.pa_weights.resize(count);
+      attrs.fit_weights.resize(count);
+      attrs.num_authors_weights.resize(count);
+      attrs.author_reputation_weights.resize(count);
+      attrs.alphas.resize(count);
+      attrs.out_degrees.resize(count);
+      attrs.fitness_lag_durations.resize(count);
+      attrs.fitness_peak_values.resize(count);
+      attrs.fitness_peak_durations.resize(count);
+      attrs.num_authors.resize(count);
+      attrs.is_same_year_source.resize(count);
     }
     if (count > 0) {
       MPI_Bcast(new_nodes.data(), count, MPI_INT, root, MPI_COMM_WORLD);
       MPI_Bcast(cluster_ids.data(), count, MPI_INT, root, MPI_COMM_WORLD);
       MPI_Bcast(author_ids.data(), count, MPI_INT, root, MPI_COMM_WORLD);
       MPI_Bcast(generator_nodes.data(), count, MPI_INT, root, MPI_COMM_WORLD);
+      MPI_Bcast(attrs.pa_weights.data(), count, MPI_DOUBLE, root, MPI_COMM_WORLD);
+      MPI_Bcast(attrs.fit_weights.data(), count, MPI_DOUBLE, root, MPI_COMM_WORLD);
+      MPI_Bcast(attrs.num_authors_weights.data(), count, MPI_DOUBLE, root, MPI_COMM_WORLD);
+      MPI_Bcast(attrs.author_reputation_weights.data(), count, MPI_DOUBLE, root, MPI_COMM_WORLD);
+      MPI_Bcast(attrs.alphas.data(), count, MPI_DOUBLE, root, MPI_COMM_WORLD);
+      MPI_Bcast(attrs.out_degrees.data(), count, MPI_INT, root, MPI_COMM_WORLD);
+      MPI_Bcast(attrs.fitness_lag_durations.data(), count, MPI_INT, root, MPI_COMM_WORLD);
+      MPI_Bcast(attrs.fitness_peak_values.data(), count, MPI_INT, root, MPI_COMM_WORLD);
+      MPI_Bcast(attrs.fitness_peak_durations.data(), count, MPI_INT, root, MPI_COMM_WORLD);
+      MPI_Bcast(attrs.num_authors.data(), count, MPI_INT, root, MPI_COMM_WORLD);
+      MPI_Bcast(attrs.is_same_year_source.data(), count, MPI_INT, root, MPI_COMM_WORLD);
     }
   }
 #else
@@ -186,7 +209,30 @@ void ClusterCoordinator::BroadcastNewNodeMetadata(
   (void)cluster_ids;
   (void)author_ids;
   (void)generator_nodes;
+  (void)attrs;
   (void)root;
+#endif
+}
+
+void ClusterCoordinator::SynchronizeNodeDiagnostics(
+    std::vector<int> &sampled_neighborhood_sizes,
+    std::vector<int> &fully_random_citations) {
+#if DISTRIBUTED_HAS_MPI
+  if (mpi_enabled_ && world_size_ > 1) {
+    if (!sampled_neighborhood_sizes.empty()) {
+      MPI_Allreduce(MPI_IN_PLACE, sampled_neighborhood_sizes.data(),
+                    static_cast<int>(sampled_neighborhood_sizes.size()),
+                    MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+    }
+    if (!fully_random_citations.empty()) {
+      MPI_Allreduce(MPI_IN_PLACE, fully_random_citations.data(),
+                    static_cast<int>(fully_random_citations.size()),
+                    MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+    }
+  }
+#else
+  (void)sampled_neighborhood_sizes;
+  (void)fully_random_citations;
 #endif
 }
 

@@ -1000,139 +1000,194 @@ void ABM::RunSimulationLoop() {
       this->db.Nodes().SetNodeCount(this->next_node_id);
     }
     this->logger.LogTime(current_year, "Create new node ids");
-    this->FillSameYearSourceNodes(same_year_source_nodes, new_nodes_vec.size());
+    if (!this->coordinator.IsMPIEnabled() || this->coordinator.IsMaster()) {
+      this->FillSameYearSourceNodes(same_year_source_nodes, new_nodes_vec.size());
+    }
     this->logger.LogTime(current_year, "Pick same year nodes");
 
-    std::vector<int> eligible_generator_nodes = this->GetEligibleGeneratorNodes(
-        this->graph, current_graph_size, this->reverse_continuous_node_mapping,
-        this->in_degree_vec, this->fitness_vec, this->in_degree_threshold,
-        this->fitness_threshold, this->start_year, current_year,
-        this->recency_threshold);
-    std::set<int> cartel_author_ids;
-    for (auto const &cartel_id : this->graph->GetCartelSet()) {
-      std::set<int> current_cartel_authors =
-          this->graph->GetCartelAuthors(cartel_id);
-      cartel_author_ids.insert(current_cartel_authors.begin(),
-                               current_cartel_authors.end());
-    }
-    std::set<int> initial_cartel_author_ids = cartel_author_ids;
-    for (size_t i = 0; i < new_nodes_vec.size(); i++) {
-      int author_id = -1;
-      int new_node = new_nodes_vec[i];
-      int weight_span_index =
-          this->continuous_node_mapping[new_node] - this->initial_graph_size;
-      int graph_span_index = this->continuous_node_mapping[new_node];
-      if (this->planted_nodes_line_number_map.contains(weight_span_index) &&
-          this->planted_author_id_vec[weight_span_index] != -1) {
-        author_id = this->planted_author_id_vec[weight_span_index];
-        this->graph->UpdateAuthorManual(author_id);
-        this->UpdateGraphAttributesAuthors(this->graph, new_node, author_id);
-      } else if (!this->planted_nodes_line_number_map.contains(
-                     weight_span_index) &&
-                 !cartel_author_ids.empty()) {
-        author_id = *(cartel_author_ids.begin());
-        this->graph->UpdateAuthorManual(author_id);
-        cartel_author_ids.erase(cartel_author_ids.begin());
-        this->UpdateGraphAttributesAuthors(this->graph, new_node, author_id);
-        if (this->clonal_cartel_agent.num_authors) {
-          this->num_authors_vec[graph_span_index] =
-              this->clonal_cartel_agent.num_authors.value();
-        }
-        if (this->clonal_cartel_agent.pa_weight) {
-          this->pa_weight_vec[weight_span_index] =
-              this->clonal_cartel_agent.pa_weight.value();
-        }
-        if (this->clonal_cartel_agent.fit_weight) {
-          this->fit_weight_vec[weight_span_index] =
-              this->clonal_cartel_agent.fit_weight.value();
-        }
-        if (this->clonal_cartel_agent.num_authors_weight) {
-          this->num_authors_weight_vec[weight_span_index] =
-              this->clonal_cartel_agent.num_authors_weight.value();
-        }
-        if (this->clonal_cartel_agent.author_reputation_weight) {
-          this->author_reputation_weight_vec[weight_span_index] =
-              this->clonal_cartel_agent.author_reputation_weight.value();
-        }
-        if (this->clonal_cartel_agent.out_degree) {
-          this->out_degree_vec[weight_span_index] =
-              this->clonal_cartel_agent.out_degree.value();
-        }
-        if (this->clonal_cartel_agent.alpha) {
-          this->alpha_vec[weight_span_index] =
-              this->clonal_cartel_agent.alpha.value();
-        }
-        if (this->clonal_cartel_agent.fitness_lag_duration) {
-          this->fitness_lag_duration_vec[weight_span_index] =
-              this->clonal_cartel_agent.fitness_lag_duration.value();
-        }
-        if (this->clonal_cartel_agent.fitness_peak_value) {
-          this->fitness_peak_value_vec[weight_span_index] =
-              this->clonal_cartel_agent.fitness_peak_value.value();
-        }
-        if (this->clonal_cartel_agent.fitness_peak_duration) {
-          this->fitness_peak_duration_vec[weight_span_index] =
-              this->clonal_cartel_agent.fitness_peak_duration.value();
-        }
-      } else {
-        author_id =
-            this->graph->GetNextAuthor(current_year, initial_cartel_author_ids);
-        this->UpdateGraphAttributesAuthors(this->graph, new_node, author_id);
+    if (!this->coordinator.IsMPIEnabled() || this->coordinator.IsMaster()) {
+      std::vector<int> eligible_generator_nodes = this->GetEligibleGeneratorNodes(
+          this->graph, current_graph_size, this->reverse_continuous_node_mapping,
+          this->in_degree_vec, this->fitness_vec, this->in_degree_threshold,
+          this->fitness_threshold, this->start_year, current_year,
+          this->recency_threshold);
+      std::set<int> cartel_author_ids;
+      for (auto const &cartel_id : this->graph->GetCartelSet()) {
+        std::set<int> current_cartel_authors =
+            this->graph->GetCartelAuthors(cartel_id);
+        cartel_author_ids.insert(current_cartel_authors.begin(),
+                                 current_cartel_authors.end());
       }
+      std::set<int> initial_cartel_author_ids = cartel_author_ids;
+      for (size_t i = 0; i < new_nodes_vec.size(); i++) {
+        int author_id = -1;
+        int new_node = new_nodes_vec[i];
+        int weight_span_index =
+            this->continuous_node_mapping[new_node] - this->initial_graph_size;
+        int graph_span_index = this->continuous_node_mapping[new_node];
+        if (this->planted_nodes_line_number_map.contains(weight_span_index) &&
+            this->planted_author_id_vec[weight_span_index] != -1) {
+          author_id = this->planted_author_id_vec[weight_span_index];
+          this->graph->UpdateAuthorManual(author_id);
+          this->UpdateGraphAttributesAuthors(this->graph, new_node, author_id);
+        } else if (!this->planted_nodes_line_number_map.contains(
+                       weight_span_index) &&
+                   !cartel_author_ids.empty()) {
+          author_id = *(cartel_author_ids.begin());
+          this->graph->UpdateAuthorManual(author_id);
+          cartel_author_ids.erase(cartel_author_ids.begin());
+          this->UpdateGraphAttributesAuthors(this->graph, new_node, author_id);
+          if (this->clonal_cartel_agent.num_authors) {
+            this->num_authors_vec[graph_span_index] =
+                this->clonal_cartel_agent.num_authors.value();
+          }
+          if (this->clonal_cartel_agent.pa_weight) {
+            this->pa_weight_vec[weight_span_index] =
+                this->clonal_cartel_agent.pa_weight.value();
+          }
+          if (this->clonal_cartel_agent.fit_weight) {
+            this->fit_weight_vec[weight_span_index] =
+                this->clonal_cartel_agent.fit_weight.value();
+          }
+          if (this->clonal_cartel_agent.num_authors_weight) {
+            this->num_authors_weight_vec[weight_span_index] =
+                this->clonal_cartel_agent.num_authors_weight.value();
+          }
+          if (this->clonal_cartel_agent.author_reputation_weight) {
+            this->author_reputation_weight_vec[weight_span_index] =
+                this->clonal_cartel_agent.author_reputation_weight.value();
+          }
+          if (this->clonal_cartel_agent.out_degree) {
+            this->out_degree_vec[weight_span_index] =
+                this->clonal_cartel_agent.out_degree.value();
+          }
+          if (this->clonal_cartel_agent.alpha) {
+            this->alpha_vec[weight_span_index] =
+                this->clonal_cartel_agent.alpha.value();
+          }
+          if (this->clonal_cartel_agent.fitness_lag_duration) {
+            this->fitness_lag_duration_vec[weight_span_index] =
+                this->clonal_cartel_agent.fitness_lag_duration.value();
+          }
+          if (this->clonal_cartel_agent.fitness_peak_value) {
+            this->fitness_peak_value_vec[weight_span_index] =
+                this->clonal_cartel_agent.fitness_peak_value.value();
+          }
+          if (this->clonal_cartel_agent.fitness_peak_duration) {
+            this->fitness_peak_duration_vec[weight_span_index] =
+                this->clonal_cartel_agent.fitness_peak_duration.value();
+          }
+        } else {
+          author_id =
+              this->graph->GetNextAuthor(current_year, initial_cartel_author_ids);
+          this->UpdateGraphAttributesAuthors(this->graph, new_node, author_id);
+        }
 
-      int explicit_cluster_id = -1;
-      if (this->planted_nodes_line_number_map.contains(weight_span_index) &&
-          this->planted_cluster_id_vec[weight_span_index] != -1) {
-        explicit_cluster_id = this->planted_cluster_id_vec[weight_span_index];
-      }
+        int explicit_cluster_id = -1;
+        if (this->planted_nodes_line_number_map.contains(weight_span_index) &&
+            this->planted_cluster_id_vec[weight_span_index] != -1) {
+          explicit_cluster_id = this->planted_cluster_id_vec[weight_span_index];
+        }
 
-      double new_node_non_random_draw =
-          non_random_generator_uniform_distribution(generator);
-      // if author part of cartel, pick randomly from cartel list
-      if (this->graph->GetCartelID(author_id) > 0) {
-        std::vector<int> cartel_generator_nodes =
-            this->GetCartelGeneratorNodes(this->graph, author_id);
-        std::vector<int> generator_nodes =
-            this->GetGeneratorNodesFromSet(cartel_generator_nodes);
-        this->UpdateGraphAttributesGeneratorNodes(
-            this->graph, new_node, generator_nodes, explicit_cluster_id);
-      } else if (new_node_non_random_draw <
-                 this->non_random_generator_probability) {
-        std::vector<int> generator_nodes =
-            this->GetGeneratorNodesFromSet(eligible_generator_nodes);
-        this->UpdateGraphAttributesGeneratorNodes(
-            this->graph, new_node, generator_nodes, explicit_cluster_id);
-      } else {
-        std::vector<int> generator_nodes = this->GetGeneratorNodes(
-            this->graph, this->reverse_continuous_node_mapping, current_year);
-        this->UpdateGraphAttributesGeneratorNodes(
-            this->graph, new_node, generator_nodes, explicit_cluster_id);
+        double new_node_non_random_draw =
+            non_random_generator_uniform_distribution(generator);
+        // if author part of cartel, pick randomly from cartel list
+        if (this->graph->GetCartelID(author_id) > 0) {
+          std::vector<int> cartel_generator_nodes =
+              this->GetCartelGeneratorNodes(this->graph, author_id);
+          std::vector<int> generator_nodes =
+              this->GetGeneratorNodesFromSet(cartel_generator_nodes);
+          this->UpdateGraphAttributesGeneratorNodes(
+              this->graph, new_node, generator_nodes, explicit_cluster_id);
+        } else if (new_node_non_random_draw <
+                   this->non_random_generator_probability) {
+          std::vector<int> generator_nodes =
+              this->GetGeneratorNodesFromSet(eligible_generator_nodes);
+          this->UpdateGraphAttributesGeneratorNodes(
+              this->graph, new_node, generator_nodes, explicit_cluster_id);
+        } else {
+          std::vector<int> generator_nodes = this->GetGeneratorNodes(
+              this->graph, this->reverse_continuous_node_mapping, current_year);
+          this->UpdateGraphAttributesGeneratorNodes(
+              this->graph, new_node, generator_nodes, explicit_cluster_id);
+        }
       }
     }
     this->logger.LogTime(current_year, "Pick generator nodes");
 
-    // Broadcast new node assignments across MPI ranks so all compute nodes share identical cluster mappings
+    // Broadcast new node assignments across MPI ranks so all compute nodes share identical cluster mappings and weights
     if (this->coordinator.IsMPIEnabled()) {
       std::vector<int> cluster_ids(new_nodes_vec.size());
       std::vector<int> author_ids(new_nodes_vec.size());
       std::vector<int> primary_gen_nodes(new_nodes_vec.size());
+      distributed::AgentBatchAttributes attrs;
 
       if (this->coordinator.IsMaster()) {
+        attrs.pa_weights.resize(new_nodes_vec.size());
+        attrs.fit_weights.resize(new_nodes_vec.size());
+        attrs.num_authors_weights.resize(new_nodes_vec.size());
+        attrs.author_reputation_weights.resize(new_nodes_vec.size());
+        attrs.alphas.resize(new_nodes_vec.size());
+        attrs.out_degrees.resize(new_nodes_vec.size());
+        attrs.fitness_lag_durations.resize(new_nodes_vec.size());
+        attrs.fitness_peak_values.resize(new_nodes_vec.size());
+        attrs.fitness_peak_durations.resize(new_nodes_vec.size());
+        attrs.num_authors.resize(new_nodes_vec.size());
+        attrs.is_same_year_source.resize(new_nodes_vec.size());
+
         for (size_t i = 0; i < new_nodes_vec.size(); ++i) {
           int n = new_nodes_vec[i];
           cluster_ids[i] = this->graph->GetCommunityAssignment(n);
           author_ids[i] = this->graph->GetAuthorId(n);
           auto gen_vec = this->GetGraphAttributesGeneratorNodes(this->graph, n);
           primary_gen_nodes[i] = gen_vec.empty() ? -1 : gen_vec[0];
+
+          int continuous_id = ((size_t)n < this->continuous_node_mapping.size())
+                                  ? this->continuous_node_mapping[n]
+                                  : n;
+          int weight_span_index = continuous_id - this->initial_graph_size;
+
+          attrs.pa_weights[i] = this->pa_weight_vec[weight_span_index];
+          attrs.fit_weights[i] = this->fit_weight_vec[weight_span_index];
+          attrs.num_authors_weights[i] = this->num_authors_weight_vec[weight_span_index];
+          attrs.author_reputation_weights[i] = this->author_reputation_weight_vec[weight_span_index];
+          attrs.alphas[i] = this->alpha_vec[weight_span_index];
+          attrs.out_degrees[i] = this->out_degree_vec[weight_span_index];
+          attrs.fitness_lag_durations[i] = this->fitness_lag_duration_vec[weight_span_index];
+          attrs.fitness_peak_values[i] = this->fitness_peak_value_vec[weight_span_index];
+          attrs.fitness_peak_durations[i] = this->fitness_peak_duration_vec[weight_span_index];
+          attrs.num_authors[i] = this->num_authors_vec[continuous_id];
+          attrs.is_same_year_source[i] = same_year_source_nodes.count(i) ? 1 : 0;
         }
       }
 
       this->coordinator.BroadcastNewNodeMetadata(
-          new_nodes_vec, cluster_ids, author_ids, primary_gen_nodes, 0);
+          new_nodes_vec, cluster_ids, author_ids, primary_gen_nodes, attrs, 0);
 
       if (!this->coordinator.IsMaster()) {
+        same_year_source_nodes.clear();
         for (size_t i = 0; i < new_nodes_vec.size(); ++i) {
           int n = new_nodes_vec[i];
+          int continuous_id = ((size_t)n < this->continuous_node_mapping.size())
+                                  ? this->continuous_node_mapping[n]
+                                  : n;
+          int weight_span_index = continuous_id - this->initial_graph_size;
+
+          this->pa_weight_vec[weight_span_index] = attrs.pa_weights[i];
+          this->fit_weight_vec[weight_span_index] = attrs.fit_weights[i];
+          this->num_authors_weight_vec[weight_span_index] = attrs.num_authors_weights[i];
+          this->author_reputation_weight_vec[weight_span_index] = attrs.author_reputation_weights[i];
+          this->alpha_vec[weight_span_index] = attrs.alphas[i];
+          this->out_degree_vec[weight_span_index] = attrs.out_degrees[i];
+          this->fitness_lag_duration_vec[weight_span_index] = attrs.fitness_lag_durations[i];
+          this->fitness_peak_value_vec[weight_span_index] = attrs.fitness_peak_values[i];
+          this->fitness_peak_duration_vec[weight_span_index] = attrs.fitness_peak_durations[i];
+          this->num_authors_vec[continuous_id] = attrs.num_authors[i];
+
+          if (attrs.is_same_year_source[i]) {
+            same_year_source_nodes.insert(i);
+          }
+
           this->graph->SetAuthorId(n, author_ids[i]);
           this->graph->UpdateAuthorPublicationMap(author_ids[i], n);
           this->graph->SetAuthorBirthYear(author_ids[i], current_year);
@@ -1199,8 +1254,8 @@ void ABM::RunSimulationLoop() {
         this->gamma);
     this->logger.LogTime(current_year, "Process author reputation array");
 
-    std::vector<int> sampled_neighborhood_sizes_map(new_nodes_vec.size());
-    std::vector<int> fully_random_citations_map(new_nodes_vec.size());
+    std::vector<int> sampled_neighborhood_sizes_map(new_nodes_vec.size(), -1);
+    std::vector<int> fully_random_citations_map(new_nodes_vec.size(), -1);
     std::vector<std::vector<int>> sampled_binned_neighborhood_sizes_map(
         new_nodes_vec.size());
 
@@ -1222,10 +1277,37 @@ void ABM::RunSimulationLoop() {
     std::vector<std::vector<std::pair<std::string, int>>>
         thread_local_parallel_stage_time_vec(max_threads);
     std::vector<std::vector<int>> thread_citations_vec(max_threads);
+    std::vector<std::vector<int>> thread_scratch_bin_vec(max_threads);
     for (int t = 0; t < max_threads; ++t) {
       thread_local_new_edges_vec[t].reserve(100);
       thread_local_parallel_stage_time_vec[t].reserve(20);
       thread_citations_vec[t].resize(this->max_out_degree + 1, 0);
+    }
+
+    // Precompute recency bins for historical cluster nodes (year < current_year)
+    // to avoid redundant O(|cluster|) binning per agent.
+    // Not built when unbinned_age_sampling is on: that option scores by age, so agents use the unfiltered cluster pool.
+    std::unordered_map<int, std::vector<std::vector<int>>> cluster_binned_cache;
+    std::unordered_map<int, int> cluster_historical_sizes;
+    if (this->use_alpha && !this->unbinned_age_sampling) {
+      for (const auto &[cid, _] : local_cluster_new_agents) {
+        if (cid >= 0) {
+          const auto &cluster_nodes = this->graph->GetClusterNodes(cid);
+          auto &bins = cluster_binned_cache[cid];
+          bins.resize(this->neighborhood_search->num_bins);
+          int hist_count = 0;
+          for (int node : cluster_nodes) {
+            if (this->graph->GetYear(node) < current_year) {
+              int bin_idx = this->neighborhood_search->GetBinIndex(this->graph, node, current_year);
+              if (bin_idx >= 0 && bin_idx < this->neighborhood_search->num_bins) {
+                bins[bin_idx].push_back(node);
+                hist_count++;
+              }
+            }
+          }
+          cluster_historical_sizes[cid] = hist_count;
+        }
+      }
     }
 
     std::vector<std::pair<std::string, int>> parallel_stage_time_vec;
@@ -1277,7 +1359,27 @@ void ABM::RunSimulationLoop() {
           this->neighborhood_search->GetNeighborhoodMap(
               this->graph, current_year, generator_nodes, num_hops);
 
+      bool use_cluster_fastpath = false;
+      int cluster_hist_size = 0;
       if (alpha > 0 && cluster_id >= 0 &&
+          this->graph->GetClusterSize(cluster_id, current_year) >= this->theta) {
+        auto hist_it = cluster_historical_sizes.find(cluster_id);
+        if (hist_it != cluster_historical_sizes.end()) {
+          cluster_hist_size = hist_it->second;
+          use_cluster_fastpath = true;
+          if (n_hop_map.size() > 2) {
+            std::vector<int> pruned_2_hop;
+            for (int node : n_hop_map[2]) {
+              if (this->graph->GetCommunityAssignment(node) != cluster_id) {
+                pruned_2_hop.push_back(node);
+              }
+            }
+            n_hop_map[2] = std::move(pruned_2_hop);
+          }
+        }
+      }
+
+      if (!use_cluster_fastpath && alpha > 0 && cluster_id >= 0 &&
           this->graph->GetClusterSize(cluster_id, current_year) >= this->theta) {
         const std::vector<int> &cluster_nodes =
             this->graph->GetClusterNodes(cluster_id);
@@ -1355,26 +1457,63 @@ void ABM::RunSimulationLoop() {
       std::set<int> cited_elements(citations.begin(),
                                    citations.begin() + num_actually_cited);
       std::vector<std::vector<int>> filtered_n_hop_map(n_hop_map.size());
-      for (size_t distance = 1; distance < n_hop_map.size(); ++distance) {
-        filtered_n_hop_map[distance].reserve(this->neighborhood_sample);
-        for (int node_id : n_hop_map[distance]) {
-          if (!cited_elements.contains(node_id)) {
-            filtered_n_hop_map[distance].push_back(node_id);
+      if (use_cluster_fastpath) {
+        // Distance 1 is handled via pre-binned cache; only filter distance >= 2
+        for (size_t distance = 2; distance < n_hop_map.size(); ++distance) {
+          filtered_n_hop_map[distance].reserve(this->neighborhood_sample);
+          for (int node_id : n_hop_map[distance]) {
+            if (!cited_elements.contains(node_id)) {
+              filtered_n_hop_map[distance].push_back(node_id);
+            }
+          }
+        }
+      } else {
+        for (size_t distance = 1; distance < n_hop_map.size(); ++distance) {
+          filtered_n_hop_map[distance].reserve(this->neighborhood_sample);
+          for (int node_id : n_hop_map[distance]) {
+            if (!cited_elements.contains(node_id)) {
+              filtered_n_hop_map[distance].push_back(node_id);
+            }
           }
         }
       }
       n_hop_map = std::move(filtered_n_hop_map);
       if (remaining_citation_quota > 0) {
-        std::vector<int> num_citations_per_neighborhood =
-            this->neighborhood_search->GetNumCitationsPerNeighborhood(
-                alpha, remaining_citation_quota, n_hop_map);
+        std::vector<int> num_citations_per_neighborhood;
+        size_t hop1_size = 0;
+        size_t hop2_size = (n_hop_map.size() > 2) ? n_hop_map[2].size() : 0;
+        if (use_cluster_fastpath) {
+          int excluded_count_hop1 = 0;
+          for (int g : generator_nodes) {
+            if (this->graph->GetCommunityAssignment(g) == cluster_id && this->graph->GetYear(g) < current_year) {
+              excluded_count_hop1++;
+            }
+          }
+          for (int c : cited_elements) {
+            if (std::find(generator_nodes.begin(), generator_nodes.end(), c) == generator_nodes.end() &&
+                this->graph->GetCommunityAssignment(c) == cluster_id && this->graph->GetYear(c) < current_year) {
+              excluded_count_hop1++;
+            }
+          }
+          hop1_size = static_cast<size_t>(std::max(0, cluster_hist_size - excluded_count_hop1));
+          num_citations_per_neighborhood =
+              this->neighborhood_search->GetNumCitationsPerNeighborhood(
+                  alpha, remaining_citation_quota, hop1_size, hop2_size);
+        } else {
+          num_citations_per_neighborhood =
+              this->neighborhood_search->GetNumCitationsPerNeighborhood(
+                  alpha, remaining_citation_quota, n_hop_map);
+        }
+
         for (size_t current_neighborhood_index = 1;
              current_neighborhood_index < n_hop_map.size();
              current_neighborhood_index++) { // 2 iter if use alpha true
-          sampled_neighborhood_sizes_map[i] +=
-              n_hop_map[current_neighborhood_index].size();
 
           if (this->unbinned_age_sampling) {
+            // Unbinned age sampling scores by age, not by recency bin, so it does not use the
+            // per-cluster bin cache (the cluster fast path is switched off when it is on).
+            sampled_neighborhood_sizes_map[i] +=
+                n_hop_map[current_neighborhood_index].size();
             int unbinned_quota =
                 (current_neighborhood_index <
                  num_citations_per_neighborhood.size())
@@ -1389,40 +1528,152 @@ void ABM::RunSimulationLoop() {
             continue;
           }
 
-          std::vector<std::vector<int>> binned_neighborhood =
-              this->neighborhood_search->BinNeighborhood(
-                  this->graph, current_year,
-                  n_hop_map[current_neighborhood_index]);
+          if (use_cluster_fastpath && current_neighborhood_index == 1) {
+            sampled_neighborhood_sizes_map[i] += hop1_size;
 
-          local_prev_time =
-              this->logger.LocalLogTime(local_parallel_stage_time_vec,
-                                        local_prev_time, "bin neighborhood");
+            std::vector<int> bin_sizes(this->neighborhood_search->num_bins, 0);
+            const auto &cached_bins = cluster_binned_cache[cluster_id];
+            for (int b = 0; b < this->neighborhood_search->num_bins; ++b) {
+              bin_sizes[b] = static_cast<int>(cached_bins[b].size());
+            }
 
-          int neighborhood_quota = (current_neighborhood_index < num_citations_per_neighborhood.size())
-                                       ? num_citations_per_neighborhood[current_neighborhood_index]
-                                       : 0;
-          std::vector<int> outdegree_per_bin_map =
-              this->neighborhood_search->BinOutdegrees(
-                  binned_neighborhood,
-                  neighborhood_quota,
-                  binned_recency_probabilities);
+            std::vector<int> excluded_nodes;
+            for (int g : generator_nodes) {
+              if (this->graph->GetCommunityAssignment(g) == cluster_id && this->graph->GetYear(g) < current_year) {
+                int b = this->neighborhood_search->GetBinIndex(this->graph, g, current_year);
+                if (b >= 0 && b < this->neighborhood_search->num_bins && bin_sizes[b] > 0) {
+                  bin_sizes[b]--;
+                  excluded_nodes.push_back(g);
+                }
+              }
+            }
+            for (int c : cited_elements) {
+              if (std::find(generator_nodes.begin(), generator_nodes.end(), c) == generator_nodes.end() &&
+                  this->graph->GetCommunityAssignment(c) == cluster_id && this->graph->GetYear(c) < current_year) {
+                int b = this->neighborhood_search->GetBinIndex(this->graph, c, current_year);
+                if (b >= 0 && b < this->neighborhood_search->num_bins && bin_sizes[b] > 0) {
+                  bin_sizes[b]--;
+                  excluded_nodes.push_back(c);
+                }
+              }
+            }
 
-          for (int bin_index = 0;
-               bin_index < this->neighborhood_search->num_bins - 1;
-               bin_index++) { // if there's only 1 bin then this is always false
-            num_actually_cited += this->citation_engine->MakeCitations(
-                this->graph, this->continuous_node_mapping, current_year,
-                binned_neighborhood[bin_index],
-                citations.subspan(num_actually_cited), metrics, weights,
-                current_graph_size, outdegree_per_bin_map[bin_index]);
-          }
-          num_actually_cited +=
-              this->citation_engine->MakeUniformRandomCitations(
+            local_prev_time =
+                this->logger.LocalLogTime(local_parallel_stage_time_vec,
+                                          local_prev_time, "bin neighborhood");
+
+            int neighborhood_quota = (current_neighborhood_index < num_citations_per_neighborhood.size())
+                                         ? num_citations_per_neighborhood[current_neighborhood_index]
+                                         : 0;
+            std::vector<int> outdegree_per_bin_map =
+                this->neighborhood_search->BinOutdegrees(
+                    bin_sizes,
+                    neighborhood_quota,
+                    binned_recency_probabilities);
+
+            for (int bin_index = 0;
+                 bin_index < this->neighborhood_search->num_bins - 1;
+                 bin_index++) {
+              int quota = outdegree_per_bin_map[bin_index];
+              if (quota <= 0) continue;
+
+              const std::vector<int> *cand_ptr = &cached_bins[bin_index];
+              auto &scratch_bin = thread_scratch_bin_vec[thread_id];
+              if (bin_sizes[bin_index] < (int)cached_bins[bin_index].size()) {
+                scratch_bin.clear();
+                scratch_bin.reserve(bin_sizes[bin_index]);
+                for (int node : cached_bins[bin_index]) {
+                  bool exclude = false;
+                  for (int ex : excluded_nodes) {
+                    if (node == ex) {
+                      exclude = true;
+                      break;
+                    }
+                  }
+                  if (!exclude) {
+                    scratch_bin.push_back(node);
+                  }
+                }
+                cand_ptr = &scratch_bin;
+              }
+
+              num_actually_cited += this->citation_engine->MakeCitations(
                   this->graph, this->continuous_node_mapping, current_year,
-                  binned_neighborhood[this->neighborhood_search->num_bins - 1],
-                  citations.subspan(num_actually_cited), current_graph_size,
-                  outdegree_per_bin_map[this->neighborhood_search->num_bins -
-                                        1]);
+                  *cand_ptr,
+                  citations.subspan(num_actually_cited), metrics, weights,
+                  current_graph_size, quota);
+            }
+
+            int last_bin = this->neighborhood_search->num_bins - 1;
+            int last_quota = outdegree_per_bin_map[last_bin];
+            if (last_quota > 0) {
+              const std::vector<int> *cand_ptr = &cached_bins[last_bin];
+              auto &scratch_bin = thread_scratch_bin_vec[thread_id];
+              if (bin_sizes[last_bin] < (int)cached_bins[last_bin].size()) {
+                scratch_bin.clear();
+                scratch_bin.reserve(bin_sizes[last_bin]);
+                for (int node : cached_bins[last_bin]) {
+                  bool exclude = false;
+                  for (int ex : excluded_nodes) {
+                    if (node == ex) {
+                      exclude = true;
+                      break;
+                    }
+                  }
+                  if (!exclude) {
+                    scratch_bin.push_back(node);
+                  }
+                }
+                cand_ptr = &scratch_bin;
+              }
+
+              num_actually_cited +=
+                  this->citation_engine->MakeUniformRandomCitations(
+                      this->graph, this->continuous_node_mapping, current_year,
+                      *cand_ptr,
+                      citations.subspan(num_actually_cited), current_graph_size,
+                      last_quota);
+            }
+
+          } else {
+            sampled_neighborhood_sizes_map[i] +=
+                n_hop_map[current_neighborhood_index].size();
+
+            std::vector<std::vector<int>> binned_neighborhood =
+                this->neighborhood_search->BinNeighborhood(
+                    this->graph, current_year,
+                    n_hop_map[current_neighborhood_index]);
+
+            local_prev_time =
+                this->logger.LocalLogTime(local_parallel_stage_time_vec,
+                                          local_prev_time, "bin neighborhood");
+
+            int neighborhood_quota = (current_neighborhood_index < num_citations_per_neighborhood.size())
+                                         ? num_citations_per_neighborhood[current_neighborhood_index]
+                                         : 0;
+            std::vector<int> outdegree_per_bin_map =
+                this->neighborhood_search->BinOutdegrees(
+                    binned_neighborhood,
+                    neighborhood_quota,
+                    binned_recency_probabilities);
+
+            for (int bin_index = 0;
+                 bin_index < this->neighborhood_search->num_bins - 1;
+                 bin_index++) { // if there's only 1 bin then this is always false
+              num_actually_cited += this->citation_engine->MakeCitations(
+                  this->graph, this->continuous_node_mapping, current_year,
+                  binned_neighborhood[bin_index],
+                  citations.subspan(num_actually_cited), metrics, weights,
+                  current_graph_size, outdegree_per_bin_map[bin_index]);
+            }
+            num_actually_cited +=
+                this->citation_engine->MakeUniformRandomCitations(
+                    this->graph, this->continuous_node_mapping, current_year,
+                    binned_neighborhood[this->neighborhood_search->num_bins - 1],
+                    citations.subspan(num_actually_cited), current_graph_size,
+                    outdegree_per_bin_map[this->neighborhood_search->num_bins -
+                                          1]);
+          }
         }
       }
       for (int j = 0; j < num_actually_cited; j++) {
@@ -1520,8 +1771,19 @@ void ABM::RunSimulationLoop() {
                          per_stage_time_map["record edges"]);
     if (this->coordinator.IsMPIEnabled()) {
       this->coordinator.SynchronizeNewEdges(new_edges_vec);
+      this->coordinator.SynchronizeNodeDiagnostics(
+          sampled_neighborhood_sizes_map, fully_random_citations_map);
       this->logger.LogTime(current_year, "Synchronize distributed new edges across ranks",
                            static_cast<int>(new_edges_vec.size()));
+    }
+
+    for (size_t i = 0; i < new_nodes_vec.size(); i++) {
+      if (sampled_neighborhood_sizes_map[i] < 0) {
+        sampled_neighborhood_sizes_map[i] = 0;
+      }
+      if (fully_random_citations_map[i] < 0) {
+        fully_random_citations_map[i] = 0;
+      }
     }
 
     for (size_t i = 0; i < new_edges_vec.size(); i++) {

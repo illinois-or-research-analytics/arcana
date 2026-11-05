@@ -84,6 +84,10 @@ public:
       const std::vector<std::vector<int>> &binned_neighborhood,
       int total_outdegree,
       const std::vector<double> &binned_recency_probabilities);
+  std::vector<int> BinOutdegrees(
+      const std::vector<int> &bin_sizes,
+      int total_outdegree,
+      const std::vector<double> &binned_recency_probabilities);
   /*
   Input: double alpha, int total_num_citations_neighborhood,
          const std::vector<std::vector<int>> &n_hop_map
@@ -95,6 +99,9 @@ public:
   std::vector<int> GetNumCitationsPerNeighborhood(
       double alpha, int total_num_citations_neighborhood,
       const std::vector<std::vector<int>> &n_hop_map);
+  std::vector<int> GetNumCitationsPerNeighborhood(
+      double alpha, int total_num_citations_neighborhood,
+      size_t hop1_size, size_t hop2_size);
 
   /*
   Input: Graph *graph, int current_year, const std::vector<int> &nodes, size_t k
