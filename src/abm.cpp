@@ -974,139 +974,194 @@ void ABM::RunSimulationLoop() {
       this->db.Nodes().SetNodeCount(this->next_node_id);
     }
     this->logger.LogTime(current_year, "Create new node ids");
-    this->FillSameYearSourceNodes(same_year_source_nodes, new_nodes_vec.size());
+    if (!this->coordinator.IsMPIEnabled() || this->coordinator.IsMaster()) {
+      this->FillSameYearSourceNodes(same_year_source_nodes, new_nodes_vec.size());
+    }
     this->logger.LogTime(current_year, "Pick same year nodes");
 
-    std::vector<int> eligible_generator_nodes = this->GetEligibleGeneratorNodes(
-        this->graph, current_graph_size, this->reverse_continuous_node_mapping,
-        this->in_degree_vec, this->fitness_vec, this->in_degree_threshold,
-        this->fitness_threshold, this->start_year, current_year,
-        this->recency_threshold);
-    std::set<int> cartel_author_ids;
-    for (auto const &cartel_id : this->graph->GetCartelSet()) {
-      std::set<int> current_cartel_authors =
-          this->graph->GetCartelAuthors(cartel_id);
-      cartel_author_ids.insert(current_cartel_authors.begin(),
-                               current_cartel_authors.end());
-    }
-    std::set<int> initial_cartel_author_ids = cartel_author_ids;
-    for (size_t i = 0; i < new_nodes_vec.size(); i++) {
-      int author_id = -1;
-      int new_node = new_nodes_vec[i];
-      int weight_span_index =
-          this->continuous_node_mapping[new_node] - this->initial_graph_size;
-      int graph_span_index = this->continuous_node_mapping[new_node];
-      if (this->planted_nodes_line_number_map.contains(weight_span_index) &&
-          this->planted_author_id_vec[weight_span_index] != -1) {
-        author_id = this->planted_author_id_vec[weight_span_index];
-        this->graph->UpdateAuthorManual(author_id);
-        this->UpdateGraphAttributesAuthors(this->graph, new_node, author_id);
-      } else if (!this->planted_nodes_line_number_map.contains(
-                     weight_span_index) &&
-                 !cartel_author_ids.empty()) {
-        author_id = *(cartel_author_ids.begin());
-        this->graph->UpdateAuthorManual(author_id);
-        cartel_author_ids.erase(cartel_author_ids.begin());
-        this->UpdateGraphAttributesAuthors(this->graph, new_node, author_id);
-        if (this->clonal_cartel_agent.num_authors) {
-          this->num_authors_vec[graph_span_index] =
-              this->clonal_cartel_agent.num_authors.value();
-        }
-        if (this->clonal_cartel_agent.pa_weight) {
-          this->pa_weight_vec[weight_span_index] =
-              this->clonal_cartel_agent.pa_weight.value();
-        }
-        if (this->clonal_cartel_agent.fit_weight) {
-          this->fit_weight_vec[weight_span_index] =
-              this->clonal_cartel_agent.fit_weight.value();
-        }
-        if (this->clonal_cartel_agent.num_authors_weight) {
-          this->num_authors_weight_vec[weight_span_index] =
-              this->clonal_cartel_agent.num_authors_weight.value();
-        }
-        if (this->clonal_cartel_agent.author_reputation_weight) {
-          this->author_reputation_weight_vec[weight_span_index] =
-              this->clonal_cartel_agent.author_reputation_weight.value();
-        }
-        if (this->clonal_cartel_agent.out_degree) {
-          this->out_degree_vec[weight_span_index] =
-              this->clonal_cartel_agent.out_degree.value();
-        }
-        if (this->clonal_cartel_agent.alpha) {
-          this->alpha_vec[weight_span_index] =
-              this->clonal_cartel_agent.alpha.value();
-        }
-        if (this->clonal_cartel_agent.fitness_lag_duration) {
-          this->fitness_lag_duration_vec[weight_span_index] =
-              this->clonal_cartel_agent.fitness_lag_duration.value();
-        }
-        if (this->clonal_cartel_agent.fitness_peak_value) {
-          this->fitness_peak_value_vec[weight_span_index] =
-              this->clonal_cartel_agent.fitness_peak_value.value();
-        }
-        if (this->clonal_cartel_agent.fitness_peak_duration) {
-          this->fitness_peak_duration_vec[weight_span_index] =
-              this->clonal_cartel_agent.fitness_peak_duration.value();
-        }
-      } else {
-        author_id =
-            this->graph->GetNextAuthor(current_year, initial_cartel_author_ids);
-        this->UpdateGraphAttributesAuthors(this->graph, new_node, author_id);
+    if (!this->coordinator.IsMPIEnabled() || this->coordinator.IsMaster()) {
+      std::vector<int> eligible_generator_nodes = this->GetEligibleGeneratorNodes(
+          this->graph, current_graph_size, this->reverse_continuous_node_mapping,
+          this->in_degree_vec, this->fitness_vec, this->in_degree_threshold,
+          this->fitness_threshold, this->start_year, current_year,
+          this->recency_threshold);
+      std::set<int> cartel_author_ids;
+      for (auto const &cartel_id : this->graph->GetCartelSet()) {
+        std::set<int> current_cartel_authors =
+            this->graph->GetCartelAuthors(cartel_id);
+        cartel_author_ids.insert(current_cartel_authors.begin(),
+                                 current_cartel_authors.end());
       }
+      std::set<int> initial_cartel_author_ids = cartel_author_ids;
+      for (size_t i = 0; i < new_nodes_vec.size(); i++) {
+        int author_id = -1;
+        int new_node = new_nodes_vec[i];
+        int weight_span_index =
+            this->continuous_node_mapping[new_node] - this->initial_graph_size;
+        int graph_span_index = this->continuous_node_mapping[new_node];
+        if (this->planted_nodes_line_number_map.contains(weight_span_index) &&
+            this->planted_author_id_vec[weight_span_index] != -1) {
+          author_id = this->planted_author_id_vec[weight_span_index];
+          this->graph->UpdateAuthorManual(author_id);
+          this->UpdateGraphAttributesAuthors(this->graph, new_node, author_id);
+        } else if (!this->planted_nodes_line_number_map.contains(
+                       weight_span_index) &&
+                   !cartel_author_ids.empty()) {
+          author_id = *(cartel_author_ids.begin());
+          this->graph->UpdateAuthorManual(author_id);
+          cartel_author_ids.erase(cartel_author_ids.begin());
+          this->UpdateGraphAttributesAuthors(this->graph, new_node, author_id);
+          if (this->clonal_cartel_agent.num_authors) {
+            this->num_authors_vec[graph_span_index] =
+                this->clonal_cartel_agent.num_authors.value();
+          }
+          if (this->clonal_cartel_agent.pa_weight) {
+            this->pa_weight_vec[weight_span_index] =
+                this->clonal_cartel_agent.pa_weight.value();
+          }
+          if (this->clonal_cartel_agent.fit_weight) {
+            this->fit_weight_vec[weight_span_index] =
+                this->clonal_cartel_agent.fit_weight.value();
+          }
+          if (this->clonal_cartel_agent.num_authors_weight) {
+            this->num_authors_weight_vec[weight_span_index] =
+                this->clonal_cartel_agent.num_authors_weight.value();
+          }
+          if (this->clonal_cartel_agent.author_reputation_weight) {
+            this->author_reputation_weight_vec[weight_span_index] =
+                this->clonal_cartel_agent.author_reputation_weight.value();
+          }
+          if (this->clonal_cartel_agent.out_degree) {
+            this->out_degree_vec[weight_span_index] =
+                this->clonal_cartel_agent.out_degree.value();
+          }
+          if (this->clonal_cartel_agent.alpha) {
+            this->alpha_vec[weight_span_index] =
+                this->clonal_cartel_agent.alpha.value();
+          }
+          if (this->clonal_cartel_agent.fitness_lag_duration) {
+            this->fitness_lag_duration_vec[weight_span_index] =
+                this->clonal_cartel_agent.fitness_lag_duration.value();
+          }
+          if (this->clonal_cartel_agent.fitness_peak_value) {
+            this->fitness_peak_value_vec[weight_span_index] =
+                this->clonal_cartel_agent.fitness_peak_value.value();
+          }
+          if (this->clonal_cartel_agent.fitness_peak_duration) {
+            this->fitness_peak_duration_vec[weight_span_index] =
+                this->clonal_cartel_agent.fitness_peak_duration.value();
+          }
+        } else {
+          author_id =
+              this->graph->GetNextAuthor(current_year, initial_cartel_author_ids);
+          this->UpdateGraphAttributesAuthors(this->graph, new_node, author_id);
+        }
 
-      int explicit_cluster_id = -1;
-      if (this->planted_nodes_line_number_map.contains(weight_span_index) &&
-          this->planted_cluster_id_vec[weight_span_index] != -1) {
-        explicit_cluster_id = this->planted_cluster_id_vec[weight_span_index];
-      }
+        int explicit_cluster_id = -1;
+        if (this->planted_nodes_line_number_map.contains(weight_span_index) &&
+            this->planted_cluster_id_vec[weight_span_index] != -1) {
+          explicit_cluster_id = this->planted_cluster_id_vec[weight_span_index];
+        }
 
-      double new_node_non_random_draw =
-          non_random_generator_uniform_distribution(generator);
-      // if author part of cartel, pick randomly from cartel list
-      if (this->graph->GetCartelID(author_id) > 0) {
-        std::vector<int> cartel_generator_nodes =
-            this->GetCartelGeneratorNodes(this->graph, author_id);
-        std::vector<int> generator_nodes =
-            this->GetGeneratorNodesFromSet(cartel_generator_nodes);
-        this->UpdateGraphAttributesGeneratorNodes(
-            this->graph, new_node, generator_nodes, explicit_cluster_id);
-      } else if (new_node_non_random_draw <
-                 this->non_random_generator_probability) {
-        std::vector<int> generator_nodes =
-            this->GetGeneratorNodesFromSet(eligible_generator_nodes);
-        this->UpdateGraphAttributesGeneratorNodes(
-            this->graph, new_node, generator_nodes, explicit_cluster_id);
-      } else {
-        std::vector<int> generator_nodes = this->GetGeneratorNodes(
-            this->graph, this->reverse_continuous_node_mapping);
-        this->UpdateGraphAttributesGeneratorNodes(
-            this->graph, new_node, generator_nodes, explicit_cluster_id);
+        double new_node_non_random_draw =
+            non_random_generator_uniform_distribution(generator);
+        // if author part of cartel, pick randomly from cartel list
+        if (this->graph->GetCartelID(author_id) > 0) {
+          std::vector<int> cartel_generator_nodes =
+              this->GetCartelGeneratorNodes(this->graph, author_id);
+          std::vector<int> generator_nodes =
+              this->GetGeneratorNodesFromSet(cartel_generator_nodes);
+          this->UpdateGraphAttributesGeneratorNodes(
+              this->graph, new_node, generator_nodes, explicit_cluster_id);
+        } else if (new_node_non_random_draw <
+                   this->non_random_generator_probability) {
+          std::vector<int> generator_nodes =
+              this->GetGeneratorNodesFromSet(eligible_generator_nodes);
+          this->UpdateGraphAttributesGeneratorNodes(
+              this->graph, new_node, generator_nodes, explicit_cluster_id);
+        } else {
+          std::vector<int> generator_nodes = this->GetGeneratorNodes(
+              this->graph, this->reverse_continuous_node_mapping);
+          this->UpdateGraphAttributesGeneratorNodes(
+              this->graph, new_node, generator_nodes, explicit_cluster_id);
+        }
       }
     }
     this->logger.LogTime(current_year, "Pick generator nodes");
 
-    // Broadcast new node assignments across MPI ranks so all compute nodes share identical cluster mappings
+    // Broadcast new node assignments across MPI ranks so all compute nodes share identical cluster mappings and weights
     if (this->coordinator.IsMPIEnabled()) {
       std::vector<int> cluster_ids(new_nodes_vec.size());
       std::vector<int> author_ids(new_nodes_vec.size());
       std::vector<int> primary_gen_nodes(new_nodes_vec.size());
+      distributed::AgentBatchAttributes attrs;
 
       if (this->coordinator.IsMaster()) {
+        attrs.pa_weights.resize(new_nodes_vec.size());
+        attrs.fit_weights.resize(new_nodes_vec.size());
+        attrs.num_authors_weights.resize(new_nodes_vec.size());
+        attrs.author_reputation_weights.resize(new_nodes_vec.size());
+        attrs.alphas.resize(new_nodes_vec.size());
+        attrs.out_degrees.resize(new_nodes_vec.size());
+        attrs.fitness_lag_durations.resize(new_nodes_vec.size());
+        attrs.fitness_peak_values.resize(new_nodes_vec.size());
+        attrs.fitness_peak_durations.resize(new_nodes_vec.size());
+        attrs.num_authors.resize(new_nodes_vec.size());
+        attrs.is_same_year_source.resize(new_nodes_vec.size());
+
         for (size_t i = 0; i < new_nodes_vec.size(); ++i) {
           int n = new_nodes_vec[i];
           cluster_ids[i] = this->graph->GetCommunityAssignment(n);
           author_ids[i] = this->graph->GetAuthorId(n);
           auto gen_vec = this->GetGraphAttributesGeneratorNodes(this->graph, n);
           primary_gen_nodes[i] = gen_vec.empty() ? -1 : gen_vec[0];
+
+          int continuous_id = ((size_t)n < this->continuous_node_mapping.size())
+                                  ? this->continuous_node_mapping[n]
+                                  : n;
+          int weight_span_index = continuous_id - this->initial_graph_size;
+
+          attrs.pa_weights[i] = this->pa_weight_vec[weight_span_index];
+          attrs.fit_weights[i] = this->fit_weight_vec[weight_span_index];
+          attrs.num_authors_weights[i] = this->num_authors_weight_vec[weight_span_index];
+          attrs.author_reputation_weights[i] = this->author_reputation_weight_vec[weight_span_index];
+          attrs.alphas[i] = this->alpha_vec[weight_span_index];
+          attrs.out_degrees[i] = this->out_degree_vec[weight_span_index];
+          attrs.fitness_lag_durations[i] = this->fitness_lag_duration_vec[weight_span_index];
+          attrs.fitness_peak_values[i] = this->fitness_peak_value_vec[weight_span_index];
+          attrs.fitness_peak_durations[i] = this->fitness_peak_duration_vec[weight_span_index];
+          attrs.num_authors[i] = this->num_authors_vec[continuous_id];
+          attrs.is_same_year_source[i] = same_year_source_nodes.count(i) ? 1 : 0;
         }
       }
 
       this->coordinator.BroadcastNewNodeMetadata(
-          new_nodes_vec, cluster_ids, author_ids, primary_gen_nodes, 0);
+          new_nodes_vec, cluster_ids, author_ids, primary_gen_nodes, attrs, 0);
 
       if (!this->coordinator.IsMaster()) {
+        same_year_source_nodes.clear();
         for (size_t i = 0; i < new_nodes_vec.size(); ++i) {
           int n = new_nodes_vec[i];
+          int continuous_id = ((size_t)n < this->continuous_node_mapping.size())
+                                  ? this->continuous_node_mapping[n]
+                                  : n;
+          int weight_span_index = continuous_id - this->initial_graph_size;
+
+          this->pa_weight_vec[weight_span_index] = attrs.pa_weights[i];
+          this->fit_weight_vec[weight_span_index] = attrs.fit_weights[i];
+          this->num_authors_weight_vec[weight_span_index] = attrs.num_authors_weights[i];
+          this->author_reputation_weight_vec[weight_span_index] = attrs.author_reputation_weights[i];
+          this->alpha_vec[weight_span_index] = attrs.alphas[i];
+          this->out_degree_vec[weight_span_index] = attrs.out_degrees[i];
+          this->fitness_lag_duration_vec[weight_span_index] = attrs.fitness_lag_durations[i];
+          this->fitness_peak_value_vec[weight_span_index] = attrs.fitness_peak_values[i];
+          this->fitness_peak_duration_vec[weight_span_index] = attrs.fitness_peak_durations[i];
+          this->num_authors_vec[continuous_id] = attrs.num_authors[i];
+
+          if (attrs.is_same_year_source[i]) {
+            same_year_source_nodes.insert(i);
+          }
+
           this->graph->SetAuthorId(n, author_ids[i]);
           this->graph->UpdateAuthorPublicationMap(author_ids[i], n);
           this->graph->SetAuthorBirthYear(author_ids[i], current_year);
@@ -1173,8 +1228,8 @@ void ABM::RunSimulationLoop() {
         this->gamma);
     this->logger.LogTime(current_year, "Process author reputation array");
 
-    std::vector<int> sampled_neighborhood_sizes_map(new_nodes_vec.size());
-    std::vector<int> fully_random_citations_map(new_nodes_vec.size());
+    std::vector<int> sampled_neighborhood_sizes_map(new_nodes_vec.size(), -1);
+    std::vector<int> fully_random_citations_map(new_nodes_vec.size(), -1);
     std::vector<std::vector<int>> sampled_binned_neighborhood_sizes_map(
         new_nodes_vec.size());
 
@@ -1670,8 +1725,19 @@ void ABM::RunSimulationLoop() {
                          per_stage_time_map["record edges"]);
     if (this->coordinator.IsMPIEnabled()) {
       this->coordinator.SynchronizeNewEdges(new_edges_vec);
+      this->coordinator.SynchronizeNodeDiagnostics(
+          sampled_neighborhood_sizes_map, fully_random_citations_map);
       this->logger.LogTime(current_year, "Synchronize distributed new edges across ranks",
                            static_cast<int>(new_edges_vec.size()));
+    }
+
+    for (size_t i = 0; i < new_nodes_vec.size(); i++) {
+      if (sampled_neighborhood_sizes_map[i] < 0) {
+        sampled_neighborhood_sizes_map[i] = 0;
+      }
+      if (fully_random_citations_map[i] < 0) {
+        fully_random_citations_map[i] = 0;
+      }
     }
 
     for (size_t i = 0; i < new_edges_vec.size(); i++) {

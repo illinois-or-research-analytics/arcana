@@ -6,8 +6,23 @@
 #include "ladybug/ladybug_db.h"
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace distributed {
+
+struct AgentBatchAttributes {
+  std::vector<double> pa_weights;
+  std::vector<double> fit_weights;
+  std::vector<double> num_authors_weights;
+  std::vector<double> author_reputation_weights;
+  std::vector<double> alphas;
+  std::vector<int> out_degrees;
+  std::vector<int> fitness_lag_durations;
+  std::vector<int> fitness_peak_values;
+  std::vector<int> fitness_peak_durations;
+  std::vector<int> num_authors;
+  std::vector<int> is_same_year_source;
+};
 
 /*
  * ClusterCoordinator: Coordinates the distributed simulation lifecycle across MPI ranks.
@@ -45,15 +60,20 @@ public:
   // Broadcast manifest metadata from root rank to all worker ranks
   void BroadcastManifest(ladybug::DBManifest &manifest, int root = 0);
 
-  // Broadcast new node assignments from root rank to all worker ranks
+  // Broadcast new node assignments and agent attributes from root rank to all worker ranks
   void BroadcastNewNodeMetadata(std::vector<int> &new_nodes,
                                 std::vector<int> &cluster_ids,
                                 std::vector<int> &author_ids,
                                 std::vector<int> &generator_nodes,
+                                AgentBatchAttributes &attrs,
                                 int root = 0);
 
   // Synchronize newly created edges across all ranks via MPI_Allgatherv
   void SynchronizeNewEdges(std::vector<std::pair<int, int>> &new_edges_vec);
+
+  // Synchronize sampled neighborhood sizes and fully random citations across all ranks
+  void SynchronizeNodeDiagnostics(std::vector<int> &sampled_neighborhood_sizes,
+                                  std::vector<int> &fully_random_citations);
 
   // Global reduction helpers
   uint64_t GlobalSum(uint64_t local_val) const;
