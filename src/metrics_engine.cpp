@@ -140,8 +140,13 @@ void MetricsEngine::PopulateFitnessSpans(
 
 void MetricsEngine::PopulateAlphaSpan(std::span<double> alpha_span,
                                       bool use_alpha, double alpha,
-                                      double minimum_alpha) {
-  std::uniform_real_distribution<double> alpha_uniform_distribution(0, 1);
+                                      double minimum_alpha,
+                                      double maximum_alpha) {
+  // Bounds apply only to random alpha (alpha == -1); main.cpp rejects bounds
+  // combined with a fixed alpha. Unset bounds (-42) default to [0, 1].
+  const double lo = (minimum_alpha == -42) ? 0.0 : minimum_alpha;
+  const double hi = (maximum_alpha == -42) ? 1.0 : maximum_alpha;
+  std::uniform_real_distribution<double> alpha_uniform_distribution(lo, hi);
 
   if (!use_alpha) {
 #pragma omp parallel for
@@ -154,16 +159,7 @@ void MetricsEngine::PopulateAlphaSpan(std::span<double> alpha_span,
       pcg32 &generator = Utils::GetThreadLocalPRNG();
       double alpha_uniform = alpha_uniform_distribution(generator);
       alpha_uniform = std::round(alpha_uniform * 1000.0) / 1000.0;
-      alpha_span[i] = alpha_uniform;
-    }
-  } else if (minimum_alpha > 0) {
-#pragma omp parallel for
-    for (size_t i = 0; i < alpha_span.size(); i++) {
-      pcg32 &generator = Utils::GetThreadLocalPRNG();
-      std::uniform_real_distribution<double> minimum_alpha_uniform_distribution{
-          minimum_alpha, 1};
-      double alpha_uniform = minimum_alpha_uniform_distribution(generator);
-      alpha_span[i] = alpha_uniform;
+      alpha_span[i] = std::min(std::max(alpha_uniform, lo), hi);
     }
   } else {
 #pragma omp parallel for

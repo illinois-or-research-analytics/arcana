@@ -23,7 +23,12 @@ in its own commit (see [PROVENANCE.md](PROVENANCE.md)).
    (rescaled to sum to 1) and total concentration. Larger concentration keeps agents closer to the means; a mean of 0
    keeps that weight at exactly 0.
 
-Both are off by default, so a CantataS config runs as before. Experimental options that did not help (age damping of the
+3. **Bounded random alpha** (`minimum_alpha`, `maximum_alpha`, only with `alpha=-1`). Each agent's alpha is drawn uniformly
+   on `[minimum_alpha, maximum_alpha]` (3 decimals) instead of on [0, 1]. With the cluster route on, the within-cluster
+   citation fraction is about the mean alpha, so `0.55` to `0.95` emphasizes intra-cluster citations. Setting either bound
+   with a fixed alpha is an error.
+
+All three are off by default, so a CantataS config runs as before. Experimental options that did not help (age damping of the
 PA score, recency-biased neighborhood sampling, a hard `max_citable_age`) are kept, off by default, for provenance. See
 [PROVENANCE.md](PROVENANCE.md).
 

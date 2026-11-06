@@ -10,13 +10,16 @@ class MetricsEngine {
 public:
   /*
   Input: std::span<double> alpha_span, bool use_alpha, double alpha, double
-  minimum_alpha Output: void (modifies alpha_span in-place) Description:
-  Populates the provided span with alpha values representing the intrinsic
-               attractiveness of nodes, optionally uniformly distributed or
-  static.
+  minimum_alpha, double maximum_alpha Output: void (modifies alpha_span in-place)
+  Description: Populates the provided span with each agent's alpha (the share
+  of its citation quota sent to distance-1 candidates). alpha >= 0 gives every
+  agent that value. alpha == -1 draws each agent's alpha uniformly on
+  [minimum_alpha, maximum_alpha], rounded to 3 decimals; an unset bound (-42)
+  defaults to 0 or 1, so with neither set alpha is uniform on [0, 1].
   */
   static void PopulateAlphaSpan(std::span<double> alpha_span, bool use_alpha,
-                                double alpha, double minimum_alpha);
+                                double alpha, double minimum_alpha,
+                                double maximum_alpha);
   /*
   Input: std::span<int> fitness_lag_duration_span, std::span<int>
   fitness_peak_value_span, std::span<int> fitness_peak_duration_span, int

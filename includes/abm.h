@@ -38,6 +38,7 @@ struct SimulationConfig {
   std::string recency_bins;
   double alpha;
   double minimum_alpha;
+  double maximum_alpha;
   bool use_alpha;
   bool start_from_checkpoint;
   std::string planted_nodes;
@@ -144,7 +145,8 @@ public:
         out_degree_bag(config.out_degree_bag),
         recency_table(config.recency_table), recency_bins(config.recency_bins),
         community_assignment(config.community_assignment), alpha(config.alpha),
-        minimum_alpha(config.minimum_alpha), use_alpha(config.use_alpha),
+        minimum_alpha(config.minimum_alpha),
+        maximum_alpha(config.maximum_alpha), use_alpha(config.use_alpha),
         start_from_checkpoint(config.start_from_checkpoint),
         planted_nodes(config.planted_nodes),
         fully_random_citations(config.fully_random_citations),
@@ -632,6 +634,7 @@ protected:
   std::string community_assignment;
   double alpha;
   double minimum_alpha;
+  double maximum_alpha;
   bool use_alpha;
   bool start_from_checkpoint;
   std::string planted_nodes;

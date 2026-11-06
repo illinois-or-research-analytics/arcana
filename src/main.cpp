@@ -169,8 +169,26 @@ int main(int argc, char *argv[]) {
     return 1;
   }
   double alpha = reader.GetReal("Agent", "alpha", -42);
-  double minimum_alpha =
-      reader.GetReal("Agent", "minimum_alpha", -42); // unused
+  // Optional bounds for the per-agent random alpha (only valid with alpha=-1).
+  // Unset (-42) means the default: uniform on [0, 1].
+  double minimum_alpha = reader.GetReal("Agent", "minimum_alpha", -42);
+  double maximum_alpha = reader.GetReal("Agent", "maximum_alpha", -42);
+  bool alpha_bounds_set = (minimum_alpha != -42) || (maximum_alpha != -42);
+  if (alpha_bounds_set) {
+    if (alpha != -1) {
+      std::cerr << "minimum_alpha/maximum_alpha require alpha=-1 (random alpha "
+                   "per agent); alpha is fixed here"
+                << std::endl;
+      return 1;
+    }
+    double lo = (minimum_alpha == -42) ? 0.0 : minimum_alpha;
+    double hi = (maximum_alpha == -42) ? 1.0 : maximum_alpha;
+    if (lo < 0.0 || hi > 1.0 || lo > hi) {
+      std::cerr << "Need 0 <= minimum_alpha <= maximum_alpha <= 1; got "
+                << lo << " and " << hi << std::endl;
+      return 1;
+    }
+  }
   std::string use_alpha_string = reader.Get("Agent", "use_alpha", "");
   bool use_alpha = false;
   if (use_alpha_string == "true") {
@@ -258,6 +276,7 @@ int main(int argc, char *argv[]) {
   config.recency_bins = recency_bins;
   config.alpha = alpha;
   config.minimum_alpha = minimum_alpha;
+  config.maximum_alpha = maximum_alpha;
   config.use_alpha = use_alpha;
   config.start_from_checkpoint = start_from_checkpoint;
   config.planted_nodes = planted_nodes;

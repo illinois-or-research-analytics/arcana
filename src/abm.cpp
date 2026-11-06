@@ -841,7 +841,8 @@ void ABM::InitializeSimulation() {
         this->author_reputation_weight);
   }
   MetricsEngine::PopulateAlphaSpan(this->alpha_vec, this->use_alpha,
-                                   this->alpha, this->minimum_alpha);
+                                   this->alpha, this->minimum_alpha,
+                                   this->maximum_alpha);
   MetricsEngine::PopulateOutDegreeSpan(this->out_degree_vec,
                                        this->out_degree_bag_vec);
   MetricsEngine::PopulateFitnessSpans(
