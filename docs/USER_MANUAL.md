@@ -242,7 +242,8 @@ label file.
 - Single-node runs are the verified path. With the CantataS fix for rank-0 attribute synchronization merged in, two
   4-node MPI replicates at `theta=50` reproduce single-node behavior (within-cluster citation fraction 49.6% and 49.7%
   against 49.7%). `theta` above the largest cluster under MPI is untested.
-- The INSTAR options (4.3 and 4.5) are merged on the `merge-instar` branch; verification runs against the existing
-  baselines were submitted and are pending, so treat them as unverified until [PROVENANCE.md](../PROVENANCE.md) says
-  otherwise.
+- The INSTAR options (4.3 and 4.5) were merged from the archived CANTATAS-INSTAR repository. At their defaults they
+  reproduce the single-node replicates (within-cluster fraction 49.69% against 49.66%, seed share of new citations 4.49%
+  against 4.48%); a run with non-random generators at 0.5, `generator_eligibility=or` and `generator_pool=agents_eligible`
+  shows the options taking effect. Each was one replicate; see [PROVENANCE.md](../PROVENANCE.md).
 - All results use one seed set (26,686 papers). A setup with a 13.9M-paper seed network has not been tested.

@@ -29,6 +29,7 @@ Commits here are the diffs between those copies; the final tree equals the `cant
 | 4 | `cantatas_unbinned` | `unbinned_age_sampling` | `..._unbinned` | age profile matches the table |
 | 5 | `cantatas_weights` | `pa/fit/na/ar_weight_mean`, `weight_concentration` | `..._unbinned_w5`, `..._w5_t1m` | see below |
 | 6 | added after merging CantataS `hkohli/optimizations` | `minimum_alpha`, `maximum_alpha` (with `alpha=-1`) | `..._alpha_55_95` (alpha 0.55 to 0.95: mean 0.750, within-cluster 72.7%) | bounded random alpha; same idea as the SASCA-ReS `variable_alpha` branch, reimplemented here |
+| 7 | merged from the archived `CANTATAS-INSTAR` (branch `instar-score-exponents`, 1a3e3a0) | `score_exponent`, `pa/fitness/num_authors/author_reputation_exponent`, `score_offset`, `generator_eligibility`, `generator_pool`, `generator_pool_min_agent_share` | `small_sim_test_baseline_instar_default`, `..._instar_nrg_or` (in `/projects/illinois/eng/cs/chackoge/illinoiscomputes/arcana`) | defaults reproduce the single-node replicates (within-cluster 49.69% vs 49.66%, seed share of new citations 4.49% vs 4.48%, agent top-0.1% median 3,738 vs 3,597); the new options take effect (one replicate) |
 
 Run directories are in `/u/chackoge/scratch` on the cluster (prefix `small_sim_test_baseline`); configs are in
 `experiments/configs/`. The `soft10` run used the original code with a modified recency table
