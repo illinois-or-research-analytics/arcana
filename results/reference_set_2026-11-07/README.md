@@ -7,6 +7,13 @@ scripts that produced the numbers, and a description of every step, so the table
 The runs are an abstract-model reference point for later sensitivity tests, not a calibration to a real network. Read patterns by
 presence and direction, not by the absolute numbers.
 
+## Terms
+
+- **Cluster-aware citing:** a new paper (agent) is modeled on a generator paper. When the generator's cluster has at least `theta` papers (here 50),
+  the agent draws its distance-1 citations from that whole cluster, and a share set by `alpha` stays inside it.
+- **Ordinary citing:** otherwise the agent cites from the generator's usual citation neighborhood, with no special weight on its cluster.
+  `theta=1000000` turns cluster-aware citing off. New papers inherit their generator's cluster label either way. See `docs/USER_MANUAL.md`, section 5.1.
+
 ## Contents
 
 | path | what it is |
@@ -70,7 +77,7 @@ members' degrees, and E the number of edges; 0 means no edges leave and 1 means 
 - **Bands.** Leiden-readout clusters are grouped by size into half-open bands [2, 10), [10, 100), [100, 1000) and [1000, ∞)
   (a cluster of 10 papers is in the second band). Per run and band the table gives the number of clusters, papers, share of papers,
   median and quartiles of conductance, minimum, and the number below 0.5.
-- **Label clusters.** For each label cluster with at least 50 seed papers (the clusters the cluster route acts on), take all papers whose
+- **Label clusters.** For each label cluster with at least 50 seed papers (the clusters cluster-aware citing acts on), take all papers whose
   `cluster_id` equals it, seeds plus the agents that joined, and compute the same conductance in that run's output network.
 
 ## Results
@@ -116,9 +123,9 @@ The per-replicate medians agree to within about 0.01.
   conductance in the 100 to 999 band. Coarser labels give more within-cluster citing, a heavier agent tail and more uncited papers.
 - The label clusters are far better separated (conductance about 0.5) than the clusters Leiden finds at 0.1 (about 0.85). Leiden at 0.1
   cannot report communities of thousands of papers, because they are not dense enough to qualify, so it does not see the structure the
-  cluster route builds at a coarse scale.
+  cluster-aware citing builds at a coarse scale.
 - Limits: one seed set; three replicates per condition; one seeded clustering per resolution; one readout resolution; no control run
-  without the cluster route, so the contribution of the route to the conductance of the label clusters is not separated out here.
+  without cluster-aware citing, so the contribution of cluster-aware citing to the conductance of the label clusters is not separated out here.
   Conductance of small clusters is noisy and close to its floor.
 - The raw networks (`edgelist.csv`, `nodelist.csv`, about 450 MB per run) are kept on the cluster, not in this repository (see
   "Where the data live" below).

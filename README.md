@@ -24,7 +24,7 @@ in its own commit (see [PROVENANCE.md](PROVENANCE.md)).
    keeps that weight at exactly 0.
 
 3. **Bounded random alpha** (`minimum_alpha`, `maximum_alpha`, only with `alpha=-1`). Each agent's alpha is drawn uniformly
-   on `[minimum_alpha, maximum_alpha]` (3 decimals) instead of on [0, 1]. With the cluster route on, the within-cluster
+   on `[minimum_alpha, maximum_alpha]` (3 decimals) instead of on [0, 1]. With cluster-aware citing on, the within-cluster
    citation fraction is about the mean alpha, so `0.55` to `0.95` emphasizes intra-cluster citations. Setting either bound
    with a fixed alpha is an error.
 
@@ -61,7 +61,7 @@ Same build as CantataS (CMake, GCC 13, OpenMPI). The runs reported in [PROVENANC
 **Distributed (MPI) mode:** with the CantataS fix for rank-0 attribute synchronization merged in (issue #1), a 4-node MPI run
 reproduces single-node behavior with `theta=50`: within-cluster citation fraction 49.6% and 49.7% in two replicates against
 49.7% on one node, and the same agent tail, age profile and weights. Both unmerged MPI and single-node were checked on one seed
-set only; `theta` above the largest cluster (cluster route off) under MPI has not been tested. When `unbinned_age_sampling` is on,
+set only; `theta` above the largest cluster (cluster-aware citing off) under MPI has not been tested. When `unbinned_age_sampling` is on,
 the cached-bin cluster fast path from CantataS is switched off.
 
 ## Caveat

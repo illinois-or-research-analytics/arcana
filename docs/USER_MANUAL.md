@@ -59,7 +59,7 @@ All are CSV with a header row. The ID column in every node-level file is `node_i
 |---|---|---|
 | `nodelist` | `node_id,year` | Seed papers and their publication years. |
 | `edgelist` | `source,target` | Seed citations (`source` cites `target`). |
-| `community_assignment` | `node_id,cluster_id` | Community label for each seed paper, used by the cluster route (see `theta`). Field labels, or a clustering such as Leiden CPM. May be empty when `theta` turns the route off. |
+| `community_assignment` | `node_id,cluster_id` | Community label for each seed paper, used by cluster-aware citing (see `theta`). Field labels, or a clustering such as Leiden CPM. May be empty when `theta` turns cluster-aware citing off. |
 | `recency_table` | `diff,count` | Number of citations at each age in years. Age 0 is ignored (same-year citations are a separate quota). With `unbinned_age_sampling=true` it is used as a per-year probability table. |
 | `out_degree_bag` | `node_id,out_degree` | Empirical out-degrees; each new paper draws its number of references from this bag. |
 | `num_authors_bag` | `pubmed_id,author_count` | Empirical author counts; each new paper draws its number of authors from this bag. |
@@ -84,13 +84,13 @@ Defaults in the tables are those applied when the key is absent. "Required" keys
 
 | Key | Default | Meaning |
 |---|---|---|
-| `alpha` | required | Share of an agent's citation quota that goes to distance-1 candidates (its generator's direct neighborhood, or its whole cluster on the cluster route). A fixed value in [0, 1], or `-1` to draw a value at random for each agent. |
-| `minimum_alpha`, `maximum_alpha` | unset (0 and 1) | Bounds of the random alpha. Only valid with `alpha=-1`; the draw is uniform on [minimum, maximum] and rounded to 3 decimals. Either bound may be given alone. Need 0 ≤ minimum ≤ maximum ≤ 1, else the program stops. With the cluster route on, the within-cluster citation fraction is about the mean alpha, so `minimum_alpha=0.55` and `maximum_alpha=0.95` emphasizes intra-cluster citations. |
+| `alpha` | required | Share of an agent's citation quota that goes to distance-1 candidates (its generator's direct neighborhood, or its whole cluster under cluster-aware citing). A fixed value in [0, 1], or `-1` to draw a value at random for each agent. |
+| `minimum_alpha`, `maximum_alpha` | unset (0 and 1) | Bounds of the random alpha. Only valid with `alpha=-1`; the draw is uniform on [minimum, maximum] and rounded to 3 decimals. Either bound may be given alone. Need 0 ≤ minimum ≤ maximum ≤ 1, else the program stops. With cluster-aware citing on, the within-cluster citation fraction is about the mean alpha, so `minimum_alpha=0.55` and `maximum_alpha=0.95` emphasizes intra-cluster citations. |
 | `use_alpha` | required | `true` applies alpha to split the quota between distance-1 and distance-2 candidates; `false` disables the split. |
-| `theta` | required | Minimum cluster size for the cluster route. A value above the largest cluster (for example `1000000`) turns the cluster route off. See 5.1. |
+| `theta` | required | Minimum cluster size for cluster-aware citing. A value above the largest cluster (for example `1000000`) turns cluster-aware citing off, so every agent cites the ordinary way. See 5.1. |
 | `same_year_citations` | required | Fraction of new papers that are same-year citation sources, for example 0.12. |
 | `fully_random_citations` | required | Fraction of each paper's references drawn uniformly at random from all papers, for example 0.05. |
-| `neighborhood_sample` | required | Maximum number of candidates sampled from each neighborhood when the cluster route is not used. |
+| `neighborhood_sample` | required | Maximum number of candidates sampled from each neighborhood when cluster-aware citing is not used. |
 | `preferential_weight`, `fitness_weight`, `num_authors_weight`, `author_reputation_weight` | required | Fixed weights of the four scoring components (preferential attachment on in-degree, fitness, author count, author reputation). `-1` for all four draws them at random for each agent (CantataS behavior). Ignored when the `*_weight_mean` options below are set. |
 
 ### 4.3 `[Agent]`: scoring (INSTAR options)
@@ -175,16 +175,26 @@ the nodelist says otherwise) when the eligible set is built, as in citation scor
 
 ## 5. How the options interact
 
-### 5.1 The cluster route
+### 5.1 Cluster-aware citing and ordinary citing
+
+A new paper (an agent) is modeled on a generator paper, and chooses whom to cite in one of two ways.
+
+- **Ordinary citing.** The candidates are the generator's citation neighborhood: distance 1 is the papers the generator cites, distance 2 the
+  papers those cite. Nothing singles out the generator's cluster.
+- **Cluster-aware citing.** Used when the generator's cluster has at least `theta` members and `alpha` is above 0. The candidates at distance 1
+  become the whole cluster, so a share of the agent's citations set by `alpha` stays inside it.
+
+`theta` decides which way an agent cites. In both cases the new paper inherits its generator's cluster label, so label clusters exist either way.
+This section describes cluster-aware citing in detail.
 
 If `alpha` is above 0 and the generator's cluster has at least `theta` members, distance 1 is the whole cluster
 (uncapped) and distance 2 is pruned to papers outside the cluster. The fraction of citations that stay inside a cluster
-is then about the mean alpha. Clusters smaller than `theta` use the ordinary neighborhood rule. Only labelled clusters of
-`theta` or more seed papers (and the agents that join them) use the route, so the number of such clusters limits its
+is then about the mean alpha. Clusters smaller than `theta` use ordinary citing. Only labelled clusters of
+`theta` or more seed papers (and the agents that join them) get cluster-aware citing, so the number of such clusters limits its
 reach: 64 of the 5,542 Leiden clusters in the tested label file have 50 or more papers. New papers inherit their
 generator's cluster.
 
-With `unbinned_age_sampling=true`, the CantataS cached-bin fast path for clusters is switched off, so the cluster route
+With `unbinned_age_sampling=true`, the CantataS cached-bin fast path for clusters is switched off, so cluster-aware citing
 works on the unfiltered cluster pool.
 
 ### 5.2 Age
@@ -230,7 +240,7 @@ label file.
 
 **Emphasize within-cluster citing.** Add `minimum_alpha=0.55` and `maximum_alpha=0.95`.
 
-**Turn the cluster route off.** `theta=1000000`.
+**Turn cluster-aware citing off.** `theta=1000000`.
 
 **Non-random generators.** `non_random_generator_probability=0.5` with `generator_eligibility=or` or `and`, and
 `generator_pool` as wanted.

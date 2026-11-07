@@ -47,7 +47,7 @@ Each new paper (agent) is built in this order.
 Seed set: 26,686 papers and 273,490 edges (`mf_seed_v3`), 40 cycles at 10% growth, 1,208,027 papers at the end. Three
 configurations with three independent replicates each: unbinned age sampling with the original random weights;
 unbinned with weights (pa 0.05, fitness 0.95, author count 0, author reputation 0, concentration 50); and the same with
-`theta = 1,000,000`, which turns off the cluster route. Multiscale readout: micro (papers), meso (Leiden clusters at
+`theta = 1,000,000`, which turns off cluster-aware citing. Multiscale readout: micro (papers), meso (Leiden clusters at
 resolution 0.1, IKC cores at k = 20) and macro (inequality, clustering, triangles). Mean ± standard deviation over
 replicates unless stated. Stochastic runs agree on the major trends; micro-level details such as the single most-cited
 paper differ between replicates and are not interpreted.
@@ -90,7 +90,7 @@ inequality and more uncited papers. Specifically:
 
 - **Seed set.** Everything was run on one seed set in which seeds are 2.2% of papers at the end. In a setup with a
   13.9M-paper seed network and 15 cycles at 3% growth, seeds are about 64% of papers and the generator is usually a seed,
-  so the generator route alone would anchor most new papers in the old literature. These results do not transfer to
+  so choosing a generator alone would anchor most new papers in the old literature. These results do not transfer to
   that case. It has not been run with ARCANA.
 - **Growth and size.** The recency table gives a share of citations per age, not a per-paper rate, so the age profile that
   results depends on how fast the network grows. Changing growth rate or the number of cycles requires re-checking it.

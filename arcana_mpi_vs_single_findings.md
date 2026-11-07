@@ -44,12 +44,12 @@ Mean ± standard deviation over the three replicates:
 
 The seed-hub gap seen in the first pair (56 vs 46) did not hold up across replicates. The within-cluster fraction is
 the clearest difference: with theta 50 and alpha random it should be near the mean alpha (about 50%, the single-node value),
-and the MPI value is about 9 points lower. It is also below the value with the cluster route off (about 64%, theta 1,000,000, single node), so it is not
+and the MPI value is about 9 points lower. It is also below the value with cluster-aware citing off (about 64%, theta 1,000,000, single node), so it is not
 a simple on/off switch.
 
 ## Hypothesis (from reading the code; not tested)
 
-The cluster route (`src/abm.cpp:1281`) replaces distance 1 with all members of the generator's cluster and prunes distance 2
+Cluster-aware citing (`src/abm.cpp:1281`) replaces distance 1 with all members of the generator's cluster and prunes distance 2
 to papers outside it. Its pool comes from per-rank cluster member lists. Under MPI those lists look inconsistent on ranks 1–3:
 
 1. On every rank, each new paper's generator is drawn from that rank's own random stream, and
@@ -77,5 +77,5 @@ second check: log the member count of a few clusters on each rank after the broa
 
 ## Not checked
 
-Theta 1,000,000 (cluster route off) under MPI; larger networks; whether ghost-cell and in-degree synchronization across ranks
+Theta 1,000,000 (cluster-aware citing off) under MPI; larger networks; whether ghost-cell and in-degree synchronization across ranks
 has other effects; the nodelist weight columns under MPI.

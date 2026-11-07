@@ -81,7 +81,7 @@ Multiscale readout (`multiscale.py report`, ranges over three replicates; full t
 | mean local clustering | 0.02 | 0.04 | 0.127 |
 
 Reading: the fitness-heavy weights (pa 0.05, fitness 0.95, concentration 50) cut the number of seed hubs roughly in
-three but also increase inequality and the share of uncited papers. Theta 1,000,000 turns off the cluster route:
+three but also increase inequality and the share of uncited papers. Theta 1,000,000 turns off cluster-aware citing:
 it is about ten times faster, less concentrated, has more local closure and far more detectable Leiden communities, but a
 higher seed share. No setting gives well-separated communities (no cluster has conductance below 0.5).
 
