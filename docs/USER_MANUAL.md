@@ -179,8 +179,8 @@ the nodelist says otherwise) when the eligible set is built, as in citation scor
 
 A new paper (an agent) is modeled on a generator paper, and chooses whom to cite in one of two ways.
 
-- **Ordinary citing.** The candidates are the generator's citation neighborhood: distance 1 is the papers the generator cites, distance 2 the
-  papers those cite. Nothing singles out the generator's cluster.
+- **Ordinary citing.** The candidates are the generator's neighborhood in the citation network: distance 1 is its direct neighbors, distance 2 the
+  neighbors of those. Nothing singles out the generator's cluster.
 - **Cluster-aware citing.** Used when the generator's cluster has at least `theta` members and `alpha` is above 0. The candidates at distance 1
   become the whole cluster, so a share of the agent's citations set by `alpha` stays inside it.
 

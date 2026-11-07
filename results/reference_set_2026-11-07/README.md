@@ -11,7 +11,7 @@ presence and direction, not by the absolute numbers.
 
 - **Cluster-aware citing:** a new paper (agent) is modeled on a generator paper. When the generator's cluster has at least `theta` papers (here 50),
   the agent draws its distance-1 citations from that whole cluster, and a share set by `alpha` stays inside it.
-- **Ordinary citing:** otherwise the agent cites from the generator's usual citation neighborhood, with no special weight on its cluster.
+- **Ordinary citing:** otherwise the agent cites from the generator's usual neighborhood in the citation network, with no special weight on its cluster.
   `theta=1000000` turns cluster-aware citing off. New papers inherit their generator's cluster label either way. See `docs/USER_MANUAL.md`, section 5.1.
 
 ## Contents
