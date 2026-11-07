@@ -1,0 +1,37 @@
+#!/bin/bash
+# Flat run folder: this folder holds config.ini, this script, submit_job.sbatch, README.md and the Slurm log.
+# The only subfolder is output/ (edgelist, nodelist, log, abm.out, abm.err). The build and the database live on node-local /tmp.
+SRC=/projects/illinois/eng/cs/chackoge/illinoiscomputes/arcana/arcana_code
+RUN=$(pwd)
+OUTPUT=${RUN}/output
+BUILD=/tmp/$USER/arcana_build_${SLURM_JOB_ID:-manual}
+DB=/tmp/$USER/ladybug_data
+
+mkdir -p "${OUTPUT}"
+
+module purge
+module load gcc/13.3.0 openmpi/5.0.1
+
+export OMP_NUM_THREADS=32
+export OMP_PROC_BIND=spread
+export OMP_PLACES=threads
+
+unset OMPI_MCA_ras_base_verbose
+
+# Node-local storage for the database (clean previous run data)
+srun --ntasks-per-node=1 rm -rf ${DB}*
+srun --ntasks-per-node=1 mkdir -p ${DB}
+
+# Compile binary fresh on node-local storage
+mkdir -p "${BUILD}"
+cd "${BUILD}"
+cmake -DCMAKE_BUILD_TYPE=Release "${SRC}"
+make -j 32
+cd "${RUN}"
+
+# Run simulation on a single compute node (the config paths ./output/... are relative to this folder)
+/usr/bin/time -v "${BUILD}/bin/abm" \
+  --config ./config.ini \
+  --db-path ${DB} 2>"${OUTPUT}/abm.err" 1>"${OUTPUT}/abm.out"
+
+rm -rf "${BUILD}"

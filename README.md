@@ -43,6 +43,12 @@ PA score, recency-biased neighborhood sampling, a hard `max_citable_age`) are ke
 4. Candidates are scored on in-degree, fitness, author count and author reputation with the agent's own weights, and
    chosen without replacement. Unfilled quota cascades from distance 1 to distance 2 to random.
 
+## Results
+
+The first reference set (nine runs: three Leiden label resolutions, three replicates each) is documented in
+[results/reference_set_2026-11-07](results/reference_set_2026-11-07/README.md), with its data, scripts and a description of how the numbers were
+generated.
+
 ## Building and running
 
 Every configuration option, the input file formats and how the options interact are described in the
