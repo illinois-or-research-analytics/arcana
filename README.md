@@ -49,6 +49,9 @@ The first reference set (nine runs: three Leiden label resolutions, three replic
 [results/reference_set_2026-11-07](results/reference_set_2026-11-07/README.md), with its data, scripts and a description of how the numbers were
 generated.
 
+The effect of non-random generator selection (six further runs, with a uniform-generator control) is in
+[results/generator_selection_2026-11-07](results/generator_selection_2026-11-07/README.md).
+
 ## Building and running
 
 Every configuration option, the input file formats and how the options interact are described in the

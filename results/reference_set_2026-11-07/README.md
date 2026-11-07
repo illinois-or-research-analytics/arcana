@@ -102,6 +102,8 @@ labels play no part in how agents cite.
 
 ### Leiden readout (resolution 0.1) by cluster-size band (mean of three replicates)
 
+**Share of papers** in a band table is the percentage of all papers in the network that sit in a Leiden cluster of that size (papers in the band's clusters divided by all papers, about 1.21 million), not the share of clusters. Shares across bands sum to about 100%, apart from papers left alone in a one-paper cluster.
+
 | input labels | band | on: clusters | on: share of papers | on: median conductance | off: clusters | off: share of papers | off: median conductance | clusters < 0.5 (on / off, all replicates) |
 |---|---|---|---|---|---|---|---|---|
 | 0.1 | 2–9 | 132,909 | 55% | 0.919 | 77,957 | 37.5% | 0.889 | 0 / 0 |
