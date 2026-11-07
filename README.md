@@ -49,9 +49,11 @@ Same build as CantataS (CMake, GCC 13, OpenMPI). The runs reported in [PROVENANC
 `use_distributed=false`, the LadyBugDB backend and 32 OpenMP threads on one node. See `experiments/configs/` and
 `experiments/batch_script.run.example`; paths in the configs point at the Illinois Campus Cluster.
 
-**Distributed (MPI) mode is not verified for the ARCANA changes.** The changes sit in code shared by both modes. A 4-node
-MPI run completes and passes integrity checks, but with `theta=50` its within-cluster citation fraction is 40.7% against
-49.7% on one node. This is traced to per-rank cluster member lists (see issue #1); the fix is being made in CantataS first.
+**Distributed (MPI) mode:** with the CantataS fix for rank-0 attribute synchronization merged in (issue #1), a 4-node MPI run
+reproduces single-node behavior with `theta=50`: within-cluster citation fraction 49.6% and 49.7% in two replicates against
+49.7% on one node, and the same agent tail, age profile and weights. Both unmerged MPI and single-node were checked on one seed
+set only; `theta` above the largest cluster (cluster route off) under MPI has not been tested. When `unbinned_age_sampling` is on,
+the cached-bin cluster fast path from CantataS is switched off.
 
 ## Caveat
 
