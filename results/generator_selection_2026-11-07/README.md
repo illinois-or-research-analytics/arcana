@@ -21,7 +21,7 @@ Scope: the study measures the effect of a generator-selection rule on tails and 
 | path | what it is |
 |---|---|
 | `data/nrg_t1m_summaries.csv` | one row per simulation (9: the three control replicates and the six generator runs): size, integrity check, tail and concentration measures, age profile, sizes of the eligible set |
-| `data/conductance_bands_nrg.csv` | Leiden-readout conductance by cluster-size band, per run (36 rows) |
+| `data/conductance_bands_nrg.csv` | Leiden-readout conductance by cluster-size band, per run (36 rows); `node_coverage` is a percentage (0 to 100) |
 | `config/` | `config_control_uniform.ini`, `config_nrg_and.ini`, `config_nrg_or.ini` (replicate r0 of each; the other replicates are identical) |
 | `scripts/` | `generator_summaries.py` (simulation summaries and eligible-set sizes), `generator_bands.py` (band table) |
 
@@ -77,9 +77,9 @@ indistinguishable); top-0.1% median 60 to 86.
 
 ### Leiden readout (resolution 0.1) by cluster-size band
 
-**Share of papers** in a band table is the percentage of all papers in the network that sit in a Leiden cluster of that size (papers in the band's clusters divided by all papers, about 1.21 million), not the share of clusters. Shares across bands sum to about 100%, apart from papers left alone in a one-paper cluster.
+**Node coverage** in a band table is the percentage of all nodes (papers) in the network that sit in a Leiden cluster whose size is in that band: the papers in the band's clusters divided by all papers (about 1.21 million). It is not the share of clusters. Coverage across bands sums to about 100%, apart from papers left alone in a one-paper cluster.
 
-| generators | band | clusters | share of papers | median conductance |
+| generators | band | clusters | node coverage | median conductance |
 |---|---|---|---|---|
 | uniform | 2–9 | 77,847 | 37.4% | 0.889 |
 | uniform | 10–99 | 50,417 | 62.4% | 0.820 |

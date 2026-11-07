@@ -12,6 +12,6 @@ for sub, out in (("arcana_reference", "conductance_bands.csv"), ("arcana_control
             lc = pd.read_csv(D + f"{sub}/cpm{res}/{rep}/meso/leiden_clusters.csv"); tot = lc["size"].sum()
             for name, lo, hi in bands:
                 s = lc[(lc["size"] >= lo) & (lc["size"] < hi)]; c = s.conductance.dropna()
-                rows.append(dict(labels=res, rep=rep, band=name, clusters=len(s), papers=int(s["size"].sum()), paper_share=s["size"].sum() / tot,
+                rows.append(dict(labels=res, rep=rep, band=name, clusters=len(s), papers=int(s["size"].sum()), node_coverage=s["size"].sum() / tot,
                     median=c.median(), q1=c.quantile(.25), q3=c.quantile(.75), min=c.min() if len(c) else np.nan, n_lt05=int((c < 0.5).sum())))
     pd.DataFrame(rows).round(4).to_csv(D + f"{sub}/{out}", index=False)

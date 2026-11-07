@@ -10,9 +10,9 @@ for name, sub in src:
         lc = pd.read_csv(f); tot = lc["size"].sum()
         for b, lo, hi in bands:
             s = lc[(lc["size"] >= lo) & (lc["size"] < hi)]; c = s.conductance.dropna()
-            rows.append(dict(generators=name, rep=rep, band=b, clusters=len(s), paper_share=s["size"].sum() / tot * 100, median=c.median(), n_lt05=int((c < 0.5).sum())))
+            rows.append(dict(generators=name, rep=rep, band=b, clusters=len(s), node_coverage=s["size"].sum() / tot * 100, median=c.median(), n_lt05=int((c < 0.5).sum())))
 df = pd.DataFrame(rows); df.round(4).to_csv(D + "arcana_nrg/conductance_bands_nrg.csv", index=False)
-g = df.groupby(["band", "generators"], sort=False).agg(clusters=("clusters", "mean"), share=("paper_share", "mean"), median=("median", "mean"), sd=("median", "std"), lt05=("n_lt05", "sum")).round(3)
+g = df.groupby(["band", "generators"], sort=False).agg(clusters=("clusters", "mean"), share=("node_coverage", "mean"), median=("median", "mean"), sd=("median", "std"), lt05=("n_lt05", "sum")).round(3)
 print(g.to_string())
 print("\nlargest cluster per run:")
 for name, sub in src:

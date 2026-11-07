@@ -19,7 +19,7 @@ presence and direction, not by the absolute numbers.
 | path | what it is |
 |---|---|
 | `data/reference_set_summaries.csv`, `data/control_set_summaries.csv` | one row per simulation (9 each): size, integrity check, hubs, tail, age profile, within-label citation fraction; cluster-aware citing on, and off (control) |
-| `data/conductance_bands.csv`, `data/conductance_bands_control.csv` | Leiden-readout conductance by cluster-size band, per run (36 rows each): cluster-aware citing on, and off (control) |
+| `data/conductance_bands.csv`, `data/conductance_bands_control.csv` | Leiden-readout conductance by cluster-size band, per run (36 rows each): cluster-aware citing on, and off (control); `node_coverage` is a fraction (0 to 1) |
 | `data/mechanism_check_population_output.txt`, `data/mechanism_check_agents_output.txt` | full output of the two checks that cluster-aware citing follows `theta` and `alpha` (see "Mechanism check") |
 | `labels/seed_comm_cpm{0.1,0.01,0.001}_v3.csv` | the three community-label files (`node_id,cluster_id`, 26,686 seed papers); `MD5SUMS.labels_and_scripts` has checksums |
 | `config/` | the configuration of one run (resolution 0.01) and the run scripts; the other eight differ only in the labels line |
@@ -77,7 +77,7 @@ Conductance of a cluster = cut / min(volume, 2E − volume), with cut the number
 members' degrees, and E the number of edges; 0 means no edges leave and 1 means fully mixed with the rest (the definition used in
 `mesoscale_readout.py`).
 - **Bands.** Leiden-readout clusters are grouped by size into half-open bands [2, 10), [10, 100), [100, 1000) and [1000, ∞)
-  (a cluster of 10 papers is in the second band). Per run and band the table gives the number of clusters, papers, share of papers,
+  (a cluster of 10 papers is in the second band). Per run and band the table gives the number of clusters, papers, node coverage,
   median and quartiles of conductance, minimum, and the number below 0.5.
 
 Outcomes are read from this post-simulation clustering, which uses no labels. It does not depend on which clusters qualified for
@@ -102,9 +102,9 @@ labels play no part in how agents cite.
 
 ### Leiden readout (resolution 0.1) by cluster-size band (mean of three replicates)
 
-**Share of papers** in a band table is the percentage of all papers in the network that sit in a Leiden cluster of that size (papers in the band's clusters divided by all papers, about 1.21 million), not the share of clusters. Shares across bands sum to about 100%, apart from papers left alone in a one-paper cluster.
+**Node coverage** in a band table is the percentage of all nodes (papers) in the network that sit in a Leiden cluster whose size is in that band: the papers in the band's clusters divided by all papers (about 1.21 million). It is not the share of clusters. Coverage across bands sums to about 100%, apart from papers left alone in a one-paper cluster.
 
-| input labels | band | on: clusters | on: share of papers | on: median conductance | off: clusters | off: share of papers | off: median conductance | clusters < 0.5 (on / off, all replicates) |
+| input labels | band | on: clusters | on: node coverage | on: median conductance | off: clusters | off: node coverage | off: median conductance | clusters < 0.5 (on / off, all replicates) |
 |---|---|---|---|---|---|---|---|---|
 | 0.1 | 2–9 | 132,909 | 55% | 0.919 | 77,957 | 37.5% | 0.889 | 0 / 0 |
 | 0.1 | 10–99 | 20,269 | 43% | 0.847 | 50,290 | 62.4% | 0.820 | 5 / 0 |
