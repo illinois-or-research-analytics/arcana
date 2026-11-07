@@ -129,16 +129,17 @@ public:
                       double peak_constant, double delay_constant);
   /*
   Input: std::unordered_map<int, double> &cached_results, std::span<int>
-  src_span, std::span<double> dst_span, double gamma Output: void (modifies
-  dst_span in-place and conditionally updates cached_results) Description:
-  Applies an exponential power scaling factor (gamma) to raw attributes, caching
+  src_span, std::span<double> dst_span, double exponent, double offset Output:
+  void (modifies dst_span in-place and conditionally updates cached_results)
+  Description: Scores each raw attribute x as max(x^exponent, 1) + offset and
+  normalizes the scores to sum to one, caching
                the output distribution for rapid probability generation in
   selection steps.
   */
   static void
   CalculateExpScores(std::unordered_map<int, double> &cached_results,
                      std::span<int> src_span, std::span<double> dst_span,
-                     double gamma);
+                     double exponent, double offset);
   /*
   Input: Graph *graph, reverse_continuous_node_mapping, int current_year,
   std::span<int> in_degree_span, std::span<double> dst_span, double gamma,

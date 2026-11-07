@@ -207,11 +207,11 @@ void MetricsEngine::CalculateTanhScores(
 
 void MetricsEngine::CalculateExpScores(
     std::unordered_map<int, double> &cached_results, std::span<int> src_span,
-    std::span<double> dst_span, double gamma) {
+    std::span<double> dst_span, double exponent, double offset) {
   double sum = 0;
 #pragma omp parallel for reduction(+ : sum)
   for (size_t i = 0; i < src_span.size(); i++) {
-    double current_dst = std::max(std::pow(src_span[i], gamma), 1.0) + 1;
+    double current_dst = std::max(std::pow(src_span[i], exponent), 1.0) + offset;
     dst_span[i] = current_dst;
     sum += current_dst;
   }
