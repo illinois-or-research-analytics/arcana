@@ -45,6 +45,9 @@ PA score, recency-biased neighborhood sampling, a hard `max_citable_age`) are ke
 
 ## Building and running
 
+Every configuration option, the input file formats and how the options interact are described in the
+[user manual](docs/USER_MANUAL.md); `config.sample.ini` carries no comments.
+
 Same build as CantataS (CMake, GCC 13, OpenMPI). The runs reported in [PROVENANCE.md](PROVENANCE.md) use
 `use_distributed=false`, the LadyBugDB backend and 32 OpenMP threads on one node. See `experiments/configs/` and
 `experiments/batch_script.run.example`; paths in the configs point at the Illinois Campus Cluster.
