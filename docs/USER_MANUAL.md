@@ -189,9 +189,8 @@ This section describes cluster-aware citing in detail.
 
 If `alpha` is above 0 and the generator's cluster has at least `theta` members, distance 1 is the whole cluster
 (uncapped) and distance 2 is pruned to papers outside the cluster. The fraction of citations that stay inside a cluster
-is then about the mean alpha. Clusters smaller than `theta` use ordinary citing. Only labelled clusters of
-`theta` or more seed papers (and the agents that join them) get cluster-aware citing, so the number of such clusters limits its
-reach: 64 of the 5,542 Leiden clusters in the tested label file have 50 or more papers. New papers inherit their
+is then about the mean alpha. Clusters smaller than `theta` use ordinary citing. The size that counts is the number of members (seeds and agents together)
+published before the agent's year, so a cluster that starts below `theta` begins to get cluster-aware citing once agents have joined it. New papers inherit their
 generator's cluster.
 
 With `unbinned_age_sampling=true`, the CantataS cached-bin fast path for clusters is switched off, so cluster-aware citing

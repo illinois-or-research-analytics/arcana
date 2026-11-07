@@ -1,0 +1,18 @@
+
+##### baseline, labels 0.01, theta 50, sample 2000+2000 agents #####
+[qualified (size>=50)] generator cited: 100.0% | in-cluster citations k vs quota n1=floor(alpha*Q): k>=n1 for 100.0%, n1<=k<=n1+fr for 100.0% | mean k=8.37, mean n1=8.37, k-n1 quartiles [0.0, 0.0, 0.0]
+      generator 1-hop neighbourhood: k1>=n1 for 13.4% of 1077 agents with a large neighbourhood; mean k1=0.32 vs n1=4.38
+[not qualified (size<50)] generator cited: 100.0% | in-cluster citations k vs quota n1=floor(alpha*Q): k>=n1 for 10.0%, n1<=k<=n1+fr for 9.7% | mean k=1.46, mean n1=8.31, k-n1 quartiles [-9.0, -5.0, -2.0]
+      generator 1-hop neighbourhood: k1>=n1 for 100.0% of 931 agents with a large neighbourhood; mean k1=3.69 vs n1=3.69
+
+##### baseline, labels 0.1, theta 50, sample 2000+2000 agents #####
+[qualified (size>=50)] generator cited: 100.0% | in-cluster citations k vs quota n1=floor(alpha*Q): k>=n1 for 100.0%, n1<=k<=n1+fr for 100.0% | mean k=8.53, mean n1=8.55, k-n1 quartiles [0.0, 0.0, 0.0]
+      generator 1-hop neighbourhood: k1>=n1 for 13.1% of 1134 agents with a large neighbourhood; mean k1=0.50 vs n1=4.64
+[not qualified (size<50)] generator cited: 100.0% | in-cluster citations k vs quota n1=floor(alpha*Q): k>=n1 for 10.3%, n1<=k<=n1+fr for 10.2% | mean k=1.45, mean n1=8.46, k-n1 quartiles [-9.0, -5.0, -2.0]
+      generator 1-hop neighbourhood: k1>=n1 for 100.0% of 1005 agents with a large neighbourhood; mean k1=3.93 vs n1=3.93
+
+##### control, labels 0.01, theta 1000000, sample 2000+2000 agents #####
+[qualified (size>=50)] generator cited: 100.0% | in-cluster citations k vs quota n1=floor(alpha*Q): k>=n1 for 12.8%, n1<=k<=n1+fr for 10.0% | mean k=2.07, mean n1=8.40, k-n1 quartiles [-8.0, -4.0, -2.0]
+      generator 1-hop neighbourhood: k1>=n1 for 100.0% of 1127 agents with a large neighbourhood; mean k1=4.31 vs n1=4.31
+[not qualified (size<50)] generator cited: 100.0% | in-cluster citations k vs quota n1=floor(alpha*Q): k>=n1 for 9.0%, n1<=k<=n1+fr for 8.8% | mean k=1.21, mean n1=8.16, k-n1 quartiles [-9.0, -5.0, -2.0]
+      generator 1-hop neighbourhood: k1>=n1 for 100.0% of 1015 agents with a large neighbourhood; mean k1=4.23 vs n1=4.23

@@ -20,10 +20,10 @@ presence and direction, not by the absolute numbers.
 |---|---|
 | `data/reference_set_summaries.csv` | one row per simulation (9): size, integrity check, hubs, tail, age profile, within-cluster citation fraction |
 | `data/conductance_bands.csv` | Leiden-readout conductance by cluster-size band, per run (36 rows) |
-| `data/label_cluster_conductance.csv` | conductance of each label cluster (at least 50 seed papers) in each run's output network (297 rows) |
+| `data/mechanism_check_population_output.txt`, `data/mechanism_check_agents_output.txt` | full output of the two checks that cluster-aware citing follows `theta` and `alpha` (see "Mechanism check") |
 | `labels/seed_comm_cpm{0.1,0.01,0.001}_v3.csv` | the three community-label files (`node_id,cluster_id`, 26,686 seed papers); `MD5SUMS.labels_and_scripts` has checksums |
 | `config/` | the configuration of one run (resolution 0.01) and the run scripts; the other eight differ only in the labels line |
-| `scripts/` | `make_seed_labels_v3.py` (labels), `run_summaries.py` (simulation summaries), `conductance_analysis.py` (both conductance tables) |
+| `scripts/` | `make_seed_labels_v3.py` (labels), `run_summaries.py` (simulation summaries), `conductance_analysis.py` (conductance by size band), `mechanism_check_population.py` and `mechanism_check_agents.py` (the two mechanism checks) |
 
 ## How the data were generated
 
@@ -36,7 +36,7 @@ presence and direction, not by the absolute numbers.
   (`CPMVertexPartition`, igraph 1.0.0) with `seed=1` at resolution 0.1, 0.01 and 0.001 (the 0.1 file is the pre-existing one, which
   the script reproduces exactly). Cluster statistics:
 
-| labels | clusters | singletons | clusters ≥ 50 papers | papers in them | largest |
+| labels | clusters | singletons | clusters with ≥ 50 seed papers | seed papers in them | largest |
 |---|---|---|---|---|---|
 | 0.1 | 7,454 | 4,146 | 27 | 2,216 | 194 |
 | 0.01 | 5,602 | 4,496 | 57 | 12,027 | 1,314 |
@@ -70,15 +70,16 @@ job for each run. Leiden stage: CPM on the undirected citation graph of the whol
 resolution is 0.1 for all nine runs, whichever labels were used as input. CPM resolution is a minimum internal edge density, so 0.1
 is the strictest of the three scales.
 
-### 4. Conductance tables (`scripts/conductance_analysis.py`)
+### 4. Conductance by size band (`scripts/conductance_analysis.py`)
 Conductance of a cluster = cut / min(volume, 2E − volume), with cut the number of edges leaving the cluster, volume the sum of its
 members' degrees, and E the number of edges; 0 means no edges leave and 1 means fully mixed with the rest (the definition used in
 `mesoscale_readout.py`).
 - **Bands.** Leiden-readout clusters are grouped by size into half-open bands [2, 10), [10, 100), [100, 1000) and [1000, ∞)
   (a cluster of 10 papers is in the second band). Per run and band the table gives the number of clusters, papers, share of papers,
   median and quartiles of conductance, minimum, and the number below 0.5.
-- **Label clusters.** For each label cluster with at least 50 seed papers (the clusters cluster-aware citing acts on), take all papers whose
-  `cluster_id` equals it, seeds plus the agents that joined, and compute the same conductance in that run's output network.
+
+Outcomes are read from this post-simulation clustering, which uses no labels. It does not depend on which clusters qualified for
+cluster-aware citing or when, so the comparison between runs does not rely on the bookkeeping of inherited labels.
 
 ## Results
 
@@ -108,27 +109,65 @@ The within-cluster column is measured against each run's own labels, so it is no
 
 No run has a cluster of 1000 or more papers. The replicate-to-replicate sd of each median is 0.001 or less (0.027 for the 38 clusters at 0.001).
 
-### Label clusters in the output networks
-
-| labels | label clusters (≥ 50 seeds) | median conductance | minimum | below 0.5 (pooled over replicates) | median size (all papers) |
-|---|---|---|---|---|---|
-| 0.1 | 27 | 0.524 | 0.456 | 25 of 81 | 3,116 |
-| 0.01 | 57 | 0.504 | 0.448 | 74 of 171 | 4,681 |
-| 0.001 | 15 | 0.511 | 0.475 | 14 of 45 | 24,903 |
-
-The per-replicate medians agree to within about 0.01.
-
 ## Reading the results, and limits
 - Finer input labels give better-separated communities in the readout: more papers in clusters of 10 to 99 papers and lower
-  conductance in the 100 to 999 band. Coarser labels give more within-cluster citing, a heavier agent tail and more uncited papers.
-- The label clusters are far better separated (conductance about 0.5) than the clusters Leiden finds at 0.1 (about 0.85). Leiden at 0.1
-  cannot report communities of thousands of papers, because they are not dense enough to qualify, so it does not see the structure the
-  cluster-aware citing builds at a coarse scale.
-- Limits: one seed set; three replicates per condition; one seeded clustering per resolution; one readout resolution; no control run
-  without cluster-aware citing, so the contribution of cluster-aware citing to the conductance of the label clusters is not separated out here.
-  Conductance of small clusters is noisy and close to its floor.
+  conductance in the 100 to 999 band. Coarser labels give more within-label citing, a heavier agent tail and more uncited papers.
+- The readout resolution is 0.1 on purpose. CPM at 0.1 reports a group as a cluster only if it is dense inside, so it can underestimate
+  community structure (communities of thousands of papers are too sparse to qualify, which is why no cluster reaches 1000 papers) but it
+  does not overestimate it. Conductance of small clusters still has a size floor: a small tidy clique cannot score low in a graph with
+  this mean degree.
+- Limits: one seed set; three replicates per condition; one seeded clustering per resolution; one readout resolution. Nine control
+  simulations (`theta=1000000`, cluster-aware citing off, otherwise identical) were also run; their readout is not part of this
+  version of the tables.
 - The raw networks (`edgelist.csv`, `nodelist.csv`, about 450 MB per run) are kept on the cluster, not in this repository (see
   "Where the data live" below).
+
+## Mechanism check: does ARCANA apply `theta` and `alpha` as documented?
+
+Two checks use only `nodelist.csv` and `edgelist.csv`. They compare the nine baseline runs with the control runs, which are identical
+except for `theta=1000000` (so cluster-aware citing never applies). Generators are drawn uniformly (`non_random_generator_probability=0`),
+so cluster growth does not depend on how agents cite, and the pairs differ only in citing behavior. These checks use the labels on
+purpose: they test the mechanism, not the outcome.
+
+**Rule being tested** (`src/abm.cpp`, `src/neighborhood_search.cpp`). A new paper reserves one edge for its generator, possibly one for a
+same-year citation, and `floor(0.05 × out-degree)` edges for fully random citations. The remaining quota Q is split by the agent's own
+`alpha`: `n1 = floor(alpha × Q)` go to distance 1, the rest to distance 2. If the generator's cluster has at least `theta` members (seeds and
+agents together, published before the agent's year) and `alpha > 0`, distance 1 is the whole cluster (excluding the generator and papers of
+the current year) and distance 2 is restricted to papers outside the cluster. Otherwise distance 1 is the generator's direct neighbors.
+
+### Check 1, population level (`scripts/mechanism_check_population.py`; sample: replicate r0 of each label set, 6 networks)
+For every agent, the size of its cluster at birth is the number of cluster members with an earlier year. The within-cluster citation share
+is pooled by size bin (edges at theta), and compared with the control.
+
+| labels | P1: jump in the share at size 50 (on), pass if ≥ 10 points | P2: same jump, mechanism off, pass if < 2 | P3: gap on − off below 50 (pass if ≤ 1.5) / from 50 to 120 (pass if ≥ 10) | P4: slope per unit alpha, qualified agents on vs off (pass if gap ≥ 0.3); unqualified on vs off (pass if within 0.1) |
+|---|---|---|---|---|
+| 0.1 | 34.4 | 0.1 | +0.7 to +0.9 / +35 | 0.92 vs 0.15; 0.13 vs 0.12 |
+| 0.01 | 33.8 | 0.3 | +1.3 to +1.5 / +35 | 0.92 vs 0.16; 0.14 vs 0.12 |
+| 0.001 | 34.3 | 0.2 | +0.7 to +1.0 / +35 | 0.92 vs 0.17; 0.13 vs 0.12 |
+
+All four predictions pass in all three label sets. Below 50 the on and off curves nearly coincide; at 50 the on curve jumps by about 34
+points and stays near 48.5%, while the off curve stays at 13–14%. Within-label citing rises with the agent's own alpha only once the
+cluster has qualified. The gap below 50 is slightly positive (0.5 to 1.5 points): a likely spillover, because earlier cluster-aware agents
+make later generators' neighborhoods a little more intra-cluster (an interpretation, not tested). The thresholds are the author's, set
+before the run.
+
+### Check 2, agent level (`scripts/mechanism_check_agents.py`; random sample of 2,000 qualified and 2,000 unqualified agents, replicate r0)
+Per agent, the quota `n1 = floor(alpha × Q)` is computed from the nodelist (out-degree, `fully_random_citations`, the agent's `alpha`, and one
+same-year edge if the edgelist shows one). Observed: the number of its citations that land in its own cluster (earlier papers other than the
+generator), and the number that land in the generator's direct neighborhood (references of the generator plus earlier papers citing it,
+a superset of what the code uses). Cartel agents, agents with `alpha = 0` and out-degree below 5 are excluded.
+
+| sample | citations into the cluster vs n1 | citations into the generator's neighborhood vs n1 |
+|---|---|---|
+| qualified, labels 0.01 | n1 ≤ k ≤ n1 + random edges for **100%**; k − n1 quartiles [0, 0, 0]; mean k 8.37 = mean n1 8.37 | 0.32 (n1 4.38): not drawn from the neighborhood |
+| qualified, labels 0.1 | **100%**; mean k 8.53 vs n1 8.55 | 0.50 (n1 4.64) |
+| unqualified, labels 0.01 / 0.1 | only 10.0% / 10.3% reach n1 (mean k 1.46 / 1.45 against n1 8.31 / 8.46): ordinary in-cluster rate | **100%** at least n1; mean 3.69 = 3.69 and 3.93 = 3.93 |
+| control (`theta=1000000`), size ≥ 50, labels 0.01 | only 12.8% reach n1 (mean k 2.07 against 8.40) | 100% at least n1 |
+| all | generator cited by 100% | |
+
+A qualified agent puts exactly its distance-1 quota into its cluster and none of it into the generator's neighborhood; an unqualified
+agent does the reverse; and with the mechanism off, the same agents miss the in-cluster quota, so the check does detect a failure. Limits:
+a sample of one replicate per label set; the neighborhood is a superset, which can weaken but not strengthen the lower-bound check.
 
 ## Where the data live
 
