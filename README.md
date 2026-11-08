@@ -52,6 +52,9 @@ generated.
 The effect of non-random generator selection (six further runs, with a uniform-generator control) is in
 [results/generator_selection_2026-11-07](results/generator_selection_2026-11-07/README.md).
 
+The same designs repeated with equal scoring weights (0.25 each; 18 runs), and a master table of all conditions at both weight settings, are in
+[results/weights_equal_2026-11-08](results/weights_equal_2026-11-08/README.md).
+
 ## Building and running
 
 Every configuration option, the input file formats and how the options interact are described in the
