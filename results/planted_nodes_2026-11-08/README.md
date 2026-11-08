@@ -107,6 +107,37 @@ in the highest-fitness ordinary agents (fitness 11 or more: 1,239 to 682 per mil
 - **The trio is not the sum of single nodes.** At out-degree 15, the 10k node got 585 to 843 in the trio and 2,015 to 20,185 alone; the 1M node got 9,509 to 19,425 in the trio and 1,915 to 3,704 alone. Three replicates each; I do not have an explanation for the second.
 - Limits: three replicates or fewer per cell; regenerated controls; one seed set, one set of weights; one planting year (2027); the planted node's generator and cluster are random.
 
+## Comparison with the network's own maximum
+Reference maxima (equal weights, three runs without planted nodes, mean of the largest in-degree): **33,863 at `theta` 50** (31,952, 32,416 and 37,222) and **43,357 at `theta` 1,000,000**.
+In the retained centre run the most-cited agent is node 155,082, published in 2045, with in-degree 31,952, fitness 27, out-degree 46, weights 0.268 / 0.256 / 0.259 / 0.217, alpha 0.305, 104 authors and cluster 3,533.
+Its cohort has 14,840 agents (median in-degree 13). The next nine agents (in-degrees 20,152 to 27,500) have fitness 2, 222, 1, 1, 1, 78, 51, 1 and 1 and were published between 2034 and 2049; among the top 100 and top 1,000 agents, 31% and 32% have fitness 1
+(against 75% of all agents). The in-degree at rank 10, 100 and 1,000 of that network is 20,152, 9,279 and 1,616.
+
+Planted node in-degree as a percentage of the reference maximum, median (best) over three replicates, and rank among all agents of the retained network (`theta` 50 only):
+
+| setting | 10k | 100k | 1M | 10M | 100M |
+|---|---|---|---|---|---|
+| out-degree 15, `theta` 50 | 7.1% (59.6%), rank 631 | 5.0% (6.4%), 940 | 10.4% (10.9%), 424 | 8.5% (58.3%), 520 | 5.0% (21.1%), 947 |
+| out-degree 50, `theta` 50 | 22.9% (25.4%), rank 143 | 59.6% (61.7%), 10 | 22.8% (61.8%), 143 | 53.0% (61.3%), 21 | not run |
+| out-degree 50, `theta` 1M | 20.7% (60.5%) | 21.7% (32.4%) | 20.6% (33.1%) | 62.8% (66.9%) | not run |
+
+Out-degree ladder, fitness 10k, one replicate (percentage of the reference maximum, rank at `theta` 50):
+
+| out-degree | `theta` 50 | `theta` 1,000,000 |
+|---|---|---|
+| 15 | 18.5%, rank 187 | 19.4% |
+| 30 | 56.4%, rank 16 | 5.9% |
+| 45 | 4.2%, rank 1,191 | 36.5% |
+| 60 | 61.2%, rank 8 | 67.7% |
+| 75 | 18.6%, rank 185 | 56.7% |
+| 90 | 61.0%, rank 8 | 20.7% |
+
+Trio nodes at `theta` 50: the 1M node reached 32.2%, 28.1% and 57.4% of the maximum and the 100k node 1.3%, 50.8% and 8.5%; the 10k node reached 1.7% to 2.5%. Five of the nine trio nodes are below 10%.
+
+**Supernodes end up in the tail but not at the top.** Of the 33 single supernodes at `theta` 50 (out-degree 15 and 50 ladders and the out-degree ladder), 7 are in the top 10 of the retained network, 10 in the top 100 and 30 in the top 1,000 (the top 0.08%); none exceeds the maximum, and the best reach 60 to 62% of it (rank 8 to 10). Of the 18 single supernodes at `theta` 1,000,000, none exceeds the reference maximum, 6 exceed 50% of it and the best reaches 68%.
+An arbitrary agent has a chance of about 0.08% of being in the top 1,000 of 1.2 million; the supernodes reached it in about 91% of runs (30 of 33), an enrichment of more than a thousandfold. Where they land inside the tail (rank 8 to 1,191; 4% to 62% of the maximum) does not follow the fitness or out-degree we varied.
+This is what a stochastic process with a heavy tail predicts: fitness moves the probability of reaching the tail, and early luck decides the position. Report such results as probabilities and distributions over replicates, not as single outcomes or rank orders. The robust quantity is the one-for-one loss in the planted node's own cohort.
+
 ## Retention of the data
 **On 2026-11-08 the raw networks (`nodelist.csv` and `edgelist.csv`) of every run were deleted from the cluster, except the centre run `weights_equal/baseline_cpm0.01/r0`.** The record is the per-run, per-node and control tables in `data/`, the configurations and planted files in `config/`, and the scripts. Runs take about two minutes and can be regenerated, statistically equivalent to the originals but not identical. The 24 unrun replicate folders of the out-degree ladder remain on the cluster as configs only.
 
