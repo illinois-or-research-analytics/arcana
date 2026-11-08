@@ -1,8 +1,9 @@
 # ARCANA
 
 **A**ge-**R**esolved **C**ommunity-**A**ware **N**etwork **A**gents: an agent-based model of citation-network growth,
-derived from [CantataS](https://github.com/illinois-or-research-analytics/cantatas). Status: research prototype, private,
-single-node runs only.
+derived from [CantataS](https://github.com/illinois-or-research-analytics/cantatas), in turn derived from the
+pyABM -> SASCA -> SASCA-ReS -> SASCA-ResA -> CantataS development cycle. Status: research prototype, now public,
+single-node runs only although enabled for distributed mode. 
 
 ## Relationship to CantataS
 
