@@ -15,7 +15,7 @@ and out-degrees come from an empirical bag. Compare directions, not magnitudes.
 - `theta` 50 means cluster-aware citing is on; `theta` 1,000,000 means it is off (ordinary citing). See the [reference set](../reference_set_2026-11-07/README.md).
 
 ## Experiments
-All runs: centre configuration of the [equal-weights set](../weights_equal_2026-11-08/README.md) (equal weights 0.25, uniform generators, labels 0.01), one config line changed (`planted_nodes=./planted_nodes.csv`), plus `theta` where stated. Each run took about 1 to 2 minutes; all 55 runs have the full 1,208,027 nodes, and every planted node was checked in the nodelist (fitness, out-degree, weights, alpha, number of authors, year).
+All runs: centre configuration of the [equal-weights set](../weights_equal_2026-11-08/README.md) (equal weights 0.25, uniform generators, labels 0.01), one config line changed (`planted_nodes=./planted_nodes.csv`), plus `theta` where stated. Each run took about 1 to 2 minutes; all 79 runs have the full 1,208,027 nodes, and every planted node was checked in the nodelist (fitness, out-degree, weights, alpha, number of authors, year).
 
 | experiment | planted nodes | phenotype of the planted node(s) | `theta` | runs |
 |---|---|---|---|---|
@@ -23,7 +23,7 @@ All runs: centre configuration of the [equal-weights set](../weights_equal_2026-
 | trio | 10k, 100k and 1M in one run | equal weights, out-degree 15, alpha 0.5, six authors | 50 | 3 |
 | single node, out-degree 15 | one node at 10k, 100k, 1M, 10M or 100M | as the trio | 50 | 15 |
 | single node, out-degree 50 | one node at 10k, 100k, 1M or 10M | as the trio but out-degree 50 | 50 and 1,000,000 | 12 + 12 |
-| out-degree ladder | one node at 10k with out-degree 15, 30, 45, 60, 75 or 90 | equal weights, alpha 0.5, six authors | 50 and 1,000,000 | 6 + 6 (one replicate) |
+| out-degree ladder | one node at 10k with out-degree 15, 30, 45, 60, 75 or 90 | equal weights, alpha 0.5, six authors | 50 and 1,000,000 | 18 + 18 (three replicates) |
 
 ## Results
 
@@ -65,16 +65,16 @@ Single node, out-degree 50, `theta` 1,000,000:
 | 1M | 2,731 / 14,335 / 8,938 | 8,938 |
 | 10M | 27,212 / 26,751 / 29,015 | 27,212 |
 
-Out-degree ladder, one replicate, fitness 10k:
+Out-degree ladder, fitness 10k (r0 / r1 / r2, median):
 
 | out-degree | `theta` 50 | `theta` 1,000,000 |
 |---|---|---|
-| 15 | 6,249 | 8,412 |
-| 30 | 19,106 | 2,542 |
-| 45 | 1,407 | 15,833 |
-| 60 | 20,722 | 29,372 |
-| 75 | 6,297 | 24,581 |
-| 90 | 20,647 | 8,989 |
+| 15 | 6,249 / 7,966 / 18,842 (7,966) | 8,412 / 7,599 / 24,761 (8,412) |
+| 30 | 19,106 / 6,919 / 19,691 (19,106) | 2,542 / 8,403 / 3,747 (3,747) |
+| 45 | 1,407 / 1,340 / 20,292 (1,407) | 15,833 / 26,447 / 4,782 (15,833) |
+| 60 | 20,722 / 1,392 / 12,310 (12,310) | 29,372 / 15,983 / 13,650 (15,983) |
+| 75 | 6,297 / 4,412 / 21,050 (6,297) | 24,581 / 27,334 / 27,441 (27,334) |
+| 90 | 20,647 / 11,620 / 8,363 (11,620) | 8,989 / 15,212 / 28,326 (15,212) |
 
 ### Where the citations come from
 Controls, 2027 cohort in citations per million:
@@ -93,8 +93,8 @@ The deficit in the 2027 cohort matches what the planted nodes gained, in every e
 | single node, out-degree 15 | theta 50 | 15 | 213 | 216 | -2 to 42 |
 | single node, out-degree 50 | theta 50 | 12 | 527 | 538 | 6 to 44 |
 | single node, out-degree 50 | theta 1M | 12 | 658 | 643 | 4 to 52 |
-| out-degree ladder (fitness 10k) | theta 50 | 6 | 547 | 534 | 2 to 41 |
-| out-degree ladder (fitness 10k) | theta 1M | 6 | 659 | 662 | 5 to 53 |
+| out-degree ladder (fitness 10k) | theta 50 | 18 | 511 | 511 | 2 to 45 |
+| out-degree ladder (fitness 10k) | theta 1M | 18 | 719 | 724 | 5 to 53 |
 
 For the trio, the other publication-year groups net to zero within noise (seeds −72, 2028–2029 −5, 2030–2034 +39, 2035–2044 +150, 2045–2066 −98 per million; control sd 21.5 or less) and the loss in the 2027 cohort is concentrated, in relative terms,
 in the highest-fitness ordinary agents (fitness 11 or more: 1,239 to 682 per million, −45%; fitness 1: 4,362 to 4,034, −7.5%; fitness 2 to 10: 1,753 to 1,706).
@@ -103,7 +103,7 @@ in the highest-fitness ordinary agents (fitness 11 or more: 1,239 to 682 per mil
 - **Quenching reproduces in direction, and it is local.** Planted supernodes take citations from ordinary, sub-1,000-fitness nodes, essentially one for one, and the loss falls on the nodes of their own publication year. This holds with cluster-aware citing on and off, for one or three planted nodes.
 - **More fitness does not buy more citations above about 10k.** In the out-degree 15 and 50 ladders the median in-degree does not rise with fitness from 10k to 100M. One exception: at `theta` 1,000,000 and out-degree 50, the three 10M nodes all reached 26,700 to 29,000, above the 10k to 1M groups (medians 8,900 to 9,400). This is consistent with saturation of the fitness share (a node of fitness f in a pool of N candidates of mean fitness 1.64 holds f/(f + 1.64 N) of the fitness mass), but I have not traced which pool the scoring normalises over.
 - **Single-node outcomes are heavy-tailed and mostly luck.** The same design gives 2,777 to 26,247 (10k, `theta` 1M, out-degree 50). At `theta` 50 several nodes end between 18,000 and 21,000 (a ceiling, unexplained), and others between 1,000 and 8,000.
-- **Out-degree:** with out-degree 50 the median supernode gets more than with out-degree 15 (7,700 to 20,200 against 1,700 to 3,500 at `theta` 50), but the one-replicate ladder from 15 to 90 shows no monotone trend (`theta` 50: 6,249 / 19,106 / 1,407 / 20,722 / 6,297 / 20,647). The out-degree effect is therefore suggested, not established; it needs replicates.
+- **Out-degree depends on `theta`.** With three replicates per out-degree from 15 to 90 (18 runs per `theta`), the supernode's in-degree is unrelated to out-degree at `theta` 50 (Spearman rho 0.13, permutation p = 0.60) and positively associated at `theta` 1,000,000 (rho 0.52, p = 0.03; mean in-degree 4,897 at out-degree 30 and 26,452 at out-degree 75, with out-degree 15 raised by one outlier at 24,761). Two tests were run, so p = 0.03 is suggestive, not firm. One possible reason is that with cluster-aware citing on, candidate pools are bounded by the generator's cluster, which mutes the benefit of more references; this was not tested. The out-degree 15 and 50 ladders agree in direction at `theta` 50 (median 1,700 to 3,500 at out-degree 15, 7,700 to 20,200 at 50) but not with the ladder, so I would not claim a graded effect there.
 - **The trio is not the sum of single nodes.** At out-degree 15, the 10k node got 585 to 843 in the trio and 2,015 to 20,185 alone; the 1M node got 9,509 to 19,425 in the trio and 1,915 to 3,704 alone. Three replicates each; I do not have an explanation for the second.
 - Limits: three replicates or fewer per cell; regenerated controls; one seed set, one set of weights; one planting year (2027); the planted node's generator and cluster are random.
 
@@ -121,25 +121,25 @@ Planted node in-degree as a percentage of the reference maximum, median (best) o
 | out-degree 50, `theta` 50 | 22.9% (25.4%), rank 143 | 59.6% (61.7%), 10 | 22.8% (61.8%), 143 | 53.0% (61.3%), 21 | not run |
 | out-degree 50, `theta` 1M | 20.7% (60.5%) | 21.7% (32.4%) | 20.6% (33.1%) | 62.8% (66.9%) | not run |
 
-Out-degree ladder, fitness 10k, one replicate (percentage of the reference maximum, rank at `theta` 50):
+Out-degree ladder, fitness 10k, median of three replicates (percentage of the reference maximum, and median rank at `theta` 50):
 
 | out-degree | `theta` 50 | `theta` 1,000,000 |
 |---|---|---|
-| 15 | 18.5%, rank 187 | 19.4% |
-| 30 | 56.4%, rank 16 | 5.9% |
-| 45 | 4.2%, rank 1,191 | 36.5% |
-| 60 | 61.2%, rank 8 | 67.7% |
-| 75 | 18.6%, rank 185 | 56.7% |
-| 90 | 61.0%, rank 8 | 20.7% |
+| 15 | 23.5%, median rank 135 | 19.4% |
+| 30 | 56.4%, median rank 16 | 8.6% |
+| 45 | 4.2%, median rank 1,191 | 36.5% |
+| 60 | 36.4%, median rank 53 | 36.9% |
+| 75 | 18.6%, median rank 185 | 63.0% |
+| 90 | 34.3%, median rank 62 | 35.1% |
 
 Trio nodes at `theta` 50: the 1M node reached 32.2%, 28.1% and 57.4% of the maximum and the 100k node 1.3%, 50.8% and 8.5%; the 10k node reached 1.7% to 2.5%. Five of the nine trio nodes are below 10%.
 
-**Supernodes end up in the tail but not at the top.** Of the 33 single supernodes at `theta` 50 (out-degree 15 and 50 ladders and the out-degree ladder), 7 are in the top 10 of the retained network, 10 in the top 100 and 30 in the top 1,000 (the top 0.08%); none exceeds the maximum, and the best reach 60 to 62% of it (rank 8 to 10). Of the 18 single supernodes at `theta` 1,000,000, none exceeds the reference maximum, 6 exceed 50% of it and the best reaches 68%.
-An arbitrary agent has a chance of about 0.08% of being in the top 1,000 of 1.2 million; the supernodes reached it in about 91% of runs (30 of 33), an enrichment of more than a thousandfold. Where they land inside the tail (rank 8 to 1,191; 4% to 62% of the maximum) does not follow the fitness or out-degree we varied.
+**Supernodes end up in the tail but not at the top.** Of the 45 single supernodes at `theta` 50 (out-degree 15 and 50 ladders and the out-degree ladder), 9 are in the top 10 of the retained network, 16 in the top 100 and 40 in the top 1,000 (the top 0.08%); none exceeds the maximum, and the best reaches 62% of it (rank 8). The ranks run from 8 to 4,441. Of the 30 single supernodes at `theta` 1,000,000, none exceeds the reference maximum, 11 exceed 50% of it and the best reaches 68%.
+An arbitrary agent has a chance of about 0.08% of being in the top 1,000 of 1.2 million; the supernodes reached it in about 89% of runs (40 of 45), an enrichment of more than a thousandfold. Where they land inside the tail (1% to 62% of the maximum) does not follow the fitness we varied, and follows out-degree only at `theta` 1,000,000 (above).
 This is what a stochastic process with a heavy tail predicts: fitness moves the probability of reaching the tail, and early luck decides the position. Report such results as probabilities and distributions over replicates, not as single outcomes or rank orders. The robust quantity is the one-for-one loss in the planted node's own cohort.
 
 ## Retention of the data
-**On 2026-11-08 the raw networks (`nodelist.csv` and `edgelist.csv`) of every run were deleted from the cluster, except the centre run `weights_equal/baseline_cpm0.01/r0`.** The record is the per-run, per-node and control tables in `data/`, the configurations and planted files in `config/`, and the scripts. Runs take about two minutes and can be regenerated, statistically equivalent to the originals but not identical. The 24 unrun replicate folders of the out-degree ladder remain on the cluster as configs only.
+**On 2026-11-08 the raw networks (`nodelist.csv` and `edgelist.csv`) of every run were deleted from the cluster, except the centre run `weights_equal/baseline_cpm0.01/r0`.** The record is the per-run, per-node and control tables in `data/`, the configurations and planted files in `config/`, and the scripts. Runs take about two minutes and can be regenerated, statistically equivalent to the originals but not identical. 
 
 ## Contents
 
@@ -149,7 +149,7 @@ This is what a stochastic process with a heavy tail predicts: fitness moves the 
 | `data/planted_nodes_per_node.csv` | one row per planted node: fitness, out-degree, weights, alpha, number of authors, final in-degree |
 | `data/controls_stats.csv` | the six control runs (three per `theta`) |
 | `config/` | example planted-node files: `planted_nodes_first_run.csv`, `planted_nodes_trio.csv`, `planted_nodes_single_example.csv` |
-| `scripts/` | `planted_all_summaries.py` (writes the three CSVs; cluster side), `planted_analysis.py`, `planted_cohort_analysis.py`, `planted_single_analysis.py`, `planted_ladder_analysis.py` (the analyses as run) and their `.sbatch` files |
+| `scripts/` | `planted_all_summaries.py` (writes the three CSVs; cluster side), `planted_ladder_reps_summaries.py` (the out-degree ladder replicates, scored against the saved control statistics), `planted_analysis.py`, `planted_cohort_analysis.py`, `planted_single_analysis.py`, `planted_ladder_analysis.py` (the analyses as run) and their `.sbatch` files |
 
 ## Where the data live
 **These paths are on the Illinois Campus Cluster project storage and may stop being valid after some time. The repository is the durable record.**

@@ -55,7 +55,7 @@ The effect of non-random generator selection (six further runs, with a uniform-g
 The same designs repeated with equal scoring weights (0.25 each; 18 runs, the reference set going forward), with a master table and a one-factor-at-a-time study of the fit weight,
 `theta` and generator selection, are in [results/weights_equal_2026-11-08](results/weights_equal_2026-11-08/README.md). The two earlier folders above were run at the earlier default weights (fit 0.70).
 
-Experiments that plant one or three extremely fit nodes (supernodes) and ask where their citations come from, with the 63 planted nodes and the controls tabulated, are in
+Experiments that plant one or three extremely fit nodes (supernodes) and ask where their citations come from, with the 87 planted nodes and the controls tabulated, are in
 [results/planted_nodes_2026-11-08](results/planted_nodes_2026-11-08/README.md).
 
 ## Data provenance
