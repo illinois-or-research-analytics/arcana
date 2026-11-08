@@ -1,0 +1,56 @@
+experiment,theta,rep,nodes,edges,n_planted,planted_in_degree_total,cohort2027_per_million,gini,top1pct_share,uncited_pct,cohort_deficit_per_million,deficit_in_control_sd
+"first run (3 nodes, random phenotype, out-degree random)",theta 50,r0,1208027,22673775,3,4018,7197.169,0.804,40.516,15.682,-157.196,-7.308
+"trio (3 nodes, equal phenotype, out-degree 15)",theta 50,r0,1208027,22677302,3,12169,6782.862,0.804,40.942,15.451,-571.504,-26.569
+"trio (3 nodes, equal phenotype, out-degree 15)",theta 50,r1,1208027,22675958,3,27417,6152.948,0.804,41.021,15.379,-1201.417,-55.853
+"trio (3 nodes, equal phenotype, out-degree 15)",theta 50,r2,1208027,22668695,3,22878,6330.139,0.803,40.328,15.679,-1024.226,-47.615
+"single node, out-degree 15, fitness 10k",theta 50,r0,1208027,22690645,1,2015,7271.896,0.803,40.521,15.42,-82.47,-3.834
+"single node, out-degree 15, fitness 10k",theta 50,r1,1208027,22656328,1,20185,6443.763,0.8,40.235,15.436,-910.603,-42.333
+"single node, out-degree 15, fitness 10k",theta 50,r2,1208027,22678482,1,2413,7215.033,0.803,40.179,15.56,-139.332,-6.477
+"single node, out-degree 15, fitness 100k",theta 50,r0,1208027,22675668,1,2183,7245.255,0.799,40.099,15.352,-109.11,-5.072
+"single node, out-degree 15, fitness 100k",theta 50,r1,1208027,22672657,1,1701,7297.821,0.804,40.672,15.503,-56.544,-2.629
+"single node, out-degree 15, fitness 100k",theta 50,r2,1208027,22686999,1,1173,7302.817,0.803,40.32,15.381,-51.549,-2.396
+"single node, out-degree 15, fitness 1M",theta 50,r0,1208027,22672853,1,3704,7168.044,0.803,40.089,15.713,-186.322,-8.662
+"single node, out-degree 15, fitness 1M",theta 50,r1,1208027,22662725,1,3526,7177.998,0.801,40.413,15.387,-176.367,-8.199
+"single node, out-degree 15, fitness 1M",theta 50,r2,1208027,22694978,1,1915,7311.001,0.802,40.355,15.454,-43.365,-2.016
+"single node, out-degree 15, fitness 10M",theta 50,r0,1208027,22656803,1,1646,7278.564,0.801,39.916,15.54,-75.801,-3.524
+"single node, out-degree 15, fitness 10M",theta 50,r1,1208027,22692461,1,19759,6493.126,0.801,40.186,15.474,-861.24,-40.038
+"single node, out-degree 15, fitness 10M",theta 50,r2,1208027,22676890,1,2866,7206.72,0.802,40.482,15.405,-147.645,-6.864
+"single node, out-degree 15, fitness 100M",theta 50,r0,1208027,22678808,1,1689,7233.273,0.8,40.11,15.477,-121.093,-5.63
+"single node, out-degree 15, fitness 100M",theta 50,r1,1208027,22666138,1,448,7400.246,0.8,40.119,15.349,45.881,2.133
+"single node, out-degree 15, fitness 100M",theta 50,r2,1208027,22691841,1,7158,7029.09,0.804,40.338,15.48,-325.275,-15.122
+"single node, out-degree 50, fitness 10k",theta 50,r0,1208027,22681709,1,8592,6992.727,0.803,40.56,15.558,-361.638,-16.812
+"single node, out-degree 50, fitness 10k",theta 50,r1,1208027,22684852,1,3377,7198.107,0.802,40.574,15.403,-156.258,-7.264
+"single node, out-degree 50, fitness 10k",theta 50,r2,1208027,22674062,1,7743,7021.636,0.8,40.226,15.314,-332.73,-15.468
+"single node, out-degree 50, fitness 100k",theta 50,r0,1208027,22658740,1,20894,6411.875,0.806,41.073,15.62,-942.491,-43.816
+"single node, out-degree 50, fitness 100k",theta 50,r1,1208027,22655891,1,20172,6450.684,0.8,40.011,15.42,-903.681,-42.011
+"single node, out-degree 50, fitness 100k",theta 50,r2,1208027,22684408,1,7692,6997.009,0.802,40.316,15.51,-357.357,-16.613
+"single node, out-degree 50, fitness 1M",theta 50,r0,1208027,22676667,1,20928,6415.361,0.802,40.432,15.511,-939.005,-43.654
+"single node, out-degree 50, fitness 1M",theta 50,r1,1208027,22671553,1,7731,6981.039,0.803,40.658,15.448,-373.326,-17.356
+"single node, out-degree 50, fitness 1M",theta 50,r2,1208027,22679941,1,4991,7120.036,0.801,40.103,15.498,-234.329,-10.894
+"single node, out-degree 50, fitness 10M",theta 50,r0,1208027,22669523,1,17952,6564.364,0.803,40.398,15.575,-790.001,-36.727
+"single node, out-degree 50, fitness 10M",theta 50,r1,1208027,22665285,1,2481,7229.382,0.801,40.243,15.296,-124.984,-5.81
+"single node, out-degree 50, fitness 10M",theta 50,r2,1208027,22681766,1,20742,6416.432,0.803,40.349,15.469,-937.934,-43.604
+"single node, out-degree 50, fitness 10k",theta 1M,r0,1208027,22656788,1,8992,7905.313,0.761,39.192,13.447,-389.29,-15.984
+"single node, out-degree 50, fitness 10k",theta 1M,r1,1208027,22654570,1,2777,8162.945,0.763,39.584,13.581,-131.658,-5.406
+"single node, out-degree 50, fitness 10k",theta 1M,r2,1208027,22672172,1,26247,7186.21,0.762,39.378,13.555,-1108.392,-45.51
+"single node, out-degree 50, fitness 100k",theta 1M,r0,1208027,22666791,1,8468,7955.118,0.762,39.7,13.539,-339.484,-13.939
+"single node, out-degree 50, fitness 100k",theta 1M,r1,1208027,22654067,1,9428,7920.432,0.762,39.685,13.581,-374.17,-15.363
+"single node, out-degree 50, fitness 100k",theta 1M,r2,1208027,22668656,1,14047,7688.413,0.761,39.687,13.527,-606.189,-24.89
+"single node, out-degree 50, fitness 1M",theta 1M,r0,1208027,22699430,1,2731,8194.831,0.761,39.097,13.533,-99.771,-4.097
+"single node, out-degree 50, fitness 1M",theta 1M,r1,1208027,22648589,1,14335,7661.846,0.761,39.289,13.474,-632.757,-25.98
+"single node, out-degree 50, fitness 1M",theta 1M,r2,1208027,22663236,1,8938,7873.015,0.763,39.762,13.508,-421.587,-17.31
+"single node, out-degree 50, fitness 10M",theta 1M,r0,1208027,22678288,1,27212,7035.275,0.761,39.297,13.5,-1259.327,-51.707
+"single node, out-degree 50, fitness 10M",theta 1M,r1,1208027,22673055,1,26751,7196.648,0.763,39.744,13.565,-1097.954,-45.081
+"single node, out-degree 50, fitness 10M",theta 1M,r2,1208027,22659359,1,29015,7033.65,0.763,39.927,13.483,-1260.953,-51.774
+"out-degree ladder, fitness 10k, out-degree 15",theta 50,r0,1208027,22678727,1,6249,7080.6,0.803,40.547,15.439,-273.765,-12.727
+"out-degree ladder, fitness 10k, out-degree 30",theta 50,r0,1208027,22660466,1,19106,6505.956,0.801,40.249,15.483,-848.409,-39.442
+"out-degree ladder, fitness 10k, out-degree 45",theta 50,r0,1208027,22673506,1,1407,7319.821,0.802,40.573,15.43,-34.545,-1.606
+"out-degree ladder, fitness 10k, out-degree 60",theta 50,r0,1208027,22686657,1,20722,6471.998,0.8,40.267,15.468,-882.367,-41.021
+"out-degree ladder, fitness 10k, out-degree 75",theta 50,r0,1208027,22670003,1,6297,7069.871,0.802,40.42,15.478,-284.494,-13.226
+"out-degree ladder, fitness 10k, out-degree 90",theta 50,r0,1208027,22656575,1,20647,6474.147,0.803,40.691,15.416,-880.218,-40.921
+"out-degree ladder, fitness 10k, out-degree 15",theta 1M,r0,1208027,22679129,1,8412,7888.354,0.76,39.102,13.475,-406.249,-16.68
+"out-degree ladder, fitness 10k, out-degree 30",theta 1M,r0,1208027,22668997,1,2542,8182.232,0.762,39.488,13.599,-112.37,-4.614
+"out-degree ladder, fitness 10k, out-degree 45",theta 1M,r0,1208027,22667459,1,15833,7661.335,0.762,39.362,13.512,-633.267,-26.001
+"out-degree ladder, fitness 10k, out-degree 60",theta 1M,r0,1208027,22686837,1,29372,6993.967,0.764,39.539,13.77,-1300.635,-53.403
+"out-degree ladder, fitness 10k, out-degree 75",theta 1M,r0,1208027,22677593,1,24581,7199.353,0.763,39.708,13.569,-1095.249,-44.97
+"out-degree ladder, fitness 10k, out-degree 90",theta 1M,r0,1208027,22675584,1,8989,7867.89,0.762,39.209,13.543,-426.713,-17.52

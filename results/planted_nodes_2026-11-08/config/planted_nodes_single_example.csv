@@ -1,0 +1,2 @@
+year,fit_peak_value,pa_weight,fit_weight,num_authors_weight,author_reputation_weight,out_degree,alpha,num_authors
+0,10000,0.25,0.25,0.25,0.25,50,0.5,6

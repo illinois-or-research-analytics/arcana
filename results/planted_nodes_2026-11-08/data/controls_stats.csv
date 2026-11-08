@@ -1,0 +1,7 @@
+experiment,theta,rep,nodes,edges,n_planted,planted_in_degree_total,cohort2027_per_million,gini,top1pct_share,uncited_pct
+control (no planted nodes),theta 50,c0,1208027,22679970,0,0,7364.604,0.804,41.204,15.412
+control (no planted nodes),theta 50,c1,1208027,22680084,0,0,7368.844,0.803,40.885,15.476
+control (no planted nodes),theta 50,c2,1208027,22682125,0,0,7329.648,0.802,40.666,15.464
+control (no planted nodes),theta 1M,c0,1208027,22664536,0,0,8320.664,0.762,39.571,13.488
+control (no planted nodes),theta 1M,c1,1208027,22683183,0,0,8290.724,0.761,39.486,13.495
+control (no planted nodes),theta 1M,c2,1208027,22681997,0,0,8272.42,0.763,39.387,13.663
