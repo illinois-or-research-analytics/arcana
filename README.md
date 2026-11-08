@@ -55,6 +55,11 @@ The effect of non-random generator selection (six further runs, with a uniform-g
 The same designs repeated with equal scoring weights (0.25 each; 18 runs), and a master table of all conditions at both weight settings, are in
 [results/weights_equal_2026-11-08](results/weights_equal_2026-11-08/README.md).
 
+## Data provenance
+
+The seed network used for all results is in [inputs/mf_seed_v3](inputs/mf_seed_v3/README.md): integer node ids, citation edges and publication years, derived
+from Dimensions data. No titles, abstracts, DOIs or author information are included, and the table mapping the integer ids back to Dimensions identifiers is not released.
+
 ## Building and running
 
 Every configuration option, the input file formats and how the options interact are described in the
