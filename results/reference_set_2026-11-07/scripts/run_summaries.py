@@ -28,7 +28,7 @@ for r in runs:
     cs, ct = ed.source.map(cl).values, ed.target.map(cl).values
     ok = (cs >= 0) & (ct >= 0) & (ed.source.map(tp).values == "agent")
     w = ag[["pa_weight", "fit_weight", "num_authors_weight", "author_reputation_weight"]]
-    rows.append(dict(run=r, papers=len(nl), edges=len(ed), integrity=bool(ok_int),
+    rows.append(dict(run=r, nodes=len(nl), edges=len(ed), integrity=bool(ok_int),
         seed_share_new_pct=gn.sum() / (tot - len(se)) * 100, seeds_ge1000=int((sd >= 1000).sum()),
         agents_gt50k=int((ai > 50000).sum()), agents_gt100k=int((ai > 100000).sum()), agent_max=int(ai.max()),
         agent_top1pct_median=t1.median(), agent_top01pct_median=t01.median(), uncited_pct=(nl.in_degree == 0).mean() * 100,

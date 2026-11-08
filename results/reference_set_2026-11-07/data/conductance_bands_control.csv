@@ -1,4 +1,4 @@
-citing,labels,rep,band,clusters,papers,node_coverage,median,q1,q3,min,n_lt05
+citing,labels,rep,band,clusters,nodes,node_coverage,median,q1,q3,min,n_lt05
 cluster-aware citing on,0.1,r0,2-9,132979,664877,0.5504,0.9192,0.9059,0.931,0.669,0
 cluster-aware citing on,0.1,r0,10-99,20152,523547,0.4334,0.8466,0.7912,0.8802,0.4783,2
 cluster-aware citing on,0.1,r0,100-999,161,17264,0.0143,0.7169,0.6506,0.7984,0.55,0

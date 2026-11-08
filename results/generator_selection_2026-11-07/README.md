@@ -1,6 +1,6 @@
 # ARCANA, non-random generator selection (2026-11-07)
 
-Six simulations that change only how the generator paper of a new paper is chosen: uniform (the control), or non-random with probability
+Six simulations that change only how the generator node of a new node is chosen: uniform (the control), or non-random with probability
 0.5 and eligibility `and` or `or`. Three replicates per condition. Cluster-aware citing is off in all of them (`theta=1000000`), so the
 only difference between a run and its control is the generator selection. The control is the `control_cpm0.01` set of the
 [reference set](../reference_set_2026-11-07/README.md).
@@ -8,11 +8,11 @@ only difference between a run and its control is the generator selection. The co
 Scope: the study measures the effect of a generator-selection rule on tails and on clustering, not how communities form or grow.
 
 ## Terms
-- **Generator:** the existing paper a new paper is modeled on. Its neighborhood supplies the candidates for the new paper's citations and the
-  new paper inherits its cluster label.
-- **Uniform generators:** `non_random_generator_probability=0`; the generator is drawn uniformly from all papers.
-- **Non-random generators:** with probability 0.5 the generator is drawn uniformly from the *eligible set*, otherwise uniformly from all papers.
-  The eligible set holds the papers published within `recency_threshold` years that are in the top `in_degree_threshold`% by in-degree
+- **Generator:** the existing node a new node is modeled on. Its neighborhood supplies the candidates for the new node's citations and the
+  new node inherits its cluster label.
+- **Uniform generators:** `non_random_generator_probability=0`; the generator is drawn uniformly from all nodes.
+- **Non-random generators:** with probability 0.5 the generator is drawn uniformly from the *eligible set*, otherwise uniformly from all nodes.
+  The eligible set holds the nodes published within `recency_threshold` years that are in the top `in_degree_threshold`% by in-degree
   (`and`: and also in the top `fitness_threshold`% by fitness; `or`: or in that top group). If the eligible set were empty, the draw would fall
   back to uniform; this never happened here (see below).
 
@@ -27,8 +27,8 @@ Scope: the study measures the effect of a generator-selection rule on tails and 
 
 ## How the data were generated
 
-- **Code and inputs:** ARCANA `main` at commit b3e8ef0 (the code of this repository), seed set `mf_seed_v3` (26,686 papers, 273,490 citations),
-  Leiden CPM 0.01 labels (`seed_comm_cpm0.01_v3.csv`; the labels play no part in citing because `theta=1000000`, but papers still inherit
+- **Code and inputs:** ARCANA `main` at commit b3e8ef0 (the code of this repository), seed set `mf_seed_v3` (26,686 nodes, 273,490 citations),
+  Leiden CPM 0.01 labels (`seed_comm_cpm0.01_v3.csv`; the labels play no part in citing because `theta=1000000`, but nodes still inherit
   them). Build and runtime as in the reference set: GCC 13.3.0, OpenMPI 5.0.1, 32 OpenMP threads on one node, Illinois Campus Cluster
   `secondary` partition, node-local database.
 - **Settings:** those of the reference set (`growth_rate=0.1`, `num_cycles=40`, `alpha=-1`, unbinned age sampling, Dirichlet weights
@@ -46,8 +46,8 @@ Scope: the study measures the effect of a generator-selection rule on tails and 
   of the earlier INSTAR experiments. `fully_random_citations` stays at 0.05, as in the reference set (the INSTAR experiments used 0.01).
 - **Runs:** jobs 12220099 to 12220104 (`and`: 12220099 to 12220101; `or`: 12220102 to 12220104), about 50 seconds each.
 - **Summaries** (`scripts/generator_summaries.py`): from each run's `nodelist.csv` and `edgelist.csv`. Integrity: no duplicate edges, no
-  self-citations, no citation from an older to a newer paper, edge count equals total in-degree (all nine pass). Concentration measures are
-  over all papers; "top 1%" and "top 0.1%" are the 1% and 0.1% of papers with the highest in-degree. The sizes of the eligible set come from
+  self-citations, no citation from an older to a newer node, edge count equals total in-degree (all nine pass). Concentration measures are
+  over all nodes; "top 1%" and "top 0.1%" are the 1% and 0.1% of nodes with the highest in-degree. The sizes of the eligible set come from
   the run log, one line per simulated year.
 - **Readout:** the multiscale pipeline (commit 4c856a6), Leiden CPM at resolution 0.1 on the whole output network, `seed=1`, then
   `scripts/generator_bands.py`. Bands are half-open, Python style: [2, 10), [10, 100), [100, 1000), [1000, ∞). Conductance is
@@ -60,24 +60,24 @@ Scope: the study measures the effect of a generator-selection rule on tails and 
 | measure | uniform (control) | non-random 0.5, `and` | non-random 0.5, `or` |
 |---|---|---|---|
 | Gini of in-degree | 0.78 | 0.80 | 0.79 |
-| top-10 papers' share of citations | 2.02% | 3.30% | 2.88% |
-| top 1% papers' share | 45.2% | 47.1% | 47.5% |
+| top-10 nodes' share of citations | 2.02% | 3.30% | 2.88% |
+| top 1% nodes' share | 45.2% | 47.1% | 47.5% |
 | top 1%: median in-degree | 269 | 273 | 266 |
 | top 0.1%: median in-degree | 2,978 | 2,634 | 2,999 |
 | top 0.1%: 99th percentile of in-degree | 34.2k | 56.9k | 43.6k |
-| most-cited paper | 69.6k | 102.4k | 107.7k |
+| most-cited node | 69.6k | 102.4k | 107.7k |
 | agents above 50k in-degree | 2.3 | 17.7 | 9.7 |
 | seed share of new citations | 5.03% | 4.46% | 4.54% |
 | citations aged 1–4 years | 30.8% | 34.3% | 33.0% |
-| uncited papers | 14.40% | 14.75% | 14.32% |
+| uncited nodes | 14.40% | 14.75% | 14.32% |
 | eligible set, smallest / median size over the 40 years | | 197 to 318 / about 3,480 | about 5,050 to 6,150 / about 28,350 |
 
-Replicate spread (sd): top 1% share 0.07 to 0.12 points; seed share 0.00 to 0.02; most-cited paper 8k to 17k (so the `and` and `or` maxima are
+Replicate spread (sd): top 1% share 0.07 to 0.12 points; seed share 0.00 to 0.02; most-cited node 8k to 17k (so the `and` and `or` maxima are
 indistinguishable); top-0.1% median 60 to 86.
 
 ### Leiden readout (resolution 0.1) by cluster-size band
 
-**Node coverage** in a band table is the percentage of all nodes (papers) in the network that sit in a Leiden cluster whose size is in that band: the papers in the band's clusters divided by all papers (about 1.21 million). It is not the share of clusters. Coverage across bands sums to about 100%, apart from papers left alone in a one-paper cluster.
+**Node coverage** in a band table is the percentage of all nodes in the network that sit in a Leiden cluster whose size is in that band: the nodes in the band's clusters divided by all nodes (about 1.21 million). It is not the share of clusters. Coverage across bands sums to about 100%, apart from nodes left alone in a one-node cluster.
 
 | generators | band | clusters | node coverage | median conductance |
 |---|---|---|---|---|
@@ -91,7 +91,7 @@ indistinguishable); top-0.1% median 60 to 86.
 | `or` | 10–99 | 50,986 | 64.8% | 0.817 |
 | `or` | 100–999 | 5.7 | 0.07% | 0.836 |
 
-No cluster in any run has conductance below 0.5 or reaches 1000 papers; the largest cluster has 211 to 225 papers. The replicate sd of each
+No cluster in any run has conductance below 0.5 or reaches 1000 nodes; the largest cluster has 211 to 225 nodes. The replicate sd of each
 band median is 0.001 or less (up to 0.010 for the five or six clusters in the 100–999 band).
 
 ## Reading the results, and limits
@@ -99,10 +99,10 @@ band median is 0.001 or less (up to 0.010 for the five or six clusters in the 10
   the top 0.1% and the number of agents above 50k, and agrees with the earlier INSTAR experiments (growth 5% for 76 years, 12% for 33 years,
   13.4% for 30 years). The body of the distribution does not move: the top-1% median is 266 to 273 in all three.
 - They also lower the seed share of new citations (5.03% to about 4.5%) and raise the share of citations aged 1 to 4 years.
-- The clustering at 0.1 barely changes: `or` is essentially the control; `and` moves about 5 points of papers from the 10–99 band to the 2–9
+- The clustering at 0.1 barely changes: `or` is essentially the control; `and` moves about 5 points of nodes from the 10–99 band to the 2–9
   band and raises the 10–99 median conductance from 0.820 to 0.835. This is a small effect next to that of cluster-aware citing, which moved
   the 10–99 share from 62% to 21–43% (reference set).
-- The `and` set was never empty (smallest size 197 papers in any year of any replicate), so the fallback to uniform never applied.
+- The `and` set was never empty (smallest size 197 nodes in any year of any replicate), so the fallback to uniform never applied.
 - Limits: three replicates; one seed set; one label set (inactive here); one probability (0.5); one set of thresholds (5 / 20 / 10); one
   readout resolution. With `pool = all` only; the pool options (`agents_eligible`, `agents`) were not run in this set.
 - The raw networks stay on the cluster (see below); they are not in this repository.

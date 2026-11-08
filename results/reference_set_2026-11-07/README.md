@@ -9,10 +9,10 @@ presence and direction, not by the absolute numbers.
 
 ## Terms
 
-- **Cluster-aware citing:** a new paper (agent) is modeled on a generator paper. When the generator's cluster has at least `theta` papers (here 50),
+- **Cluster-aware citing:** a new node (agent) is modeled on a generator node. When the generator's cluster has at least `theta` nodes (here 50),
   the agent draws its distance-1 citations from that whole cluster, and a share set by `alpha` stays inside it.
 - **Ordinary citing:** otherwise the agent cites from the generator's usual neighborhood in the citation network, with no special weight on its cluster.
-  `theta=1000000` turns cluster-aware citing off. New papers inherit their generator's cluster label either way. See `docs/USER_MANUAL.md`, section 5.1.
+  `theta=1000000` turns cluster-aware citing off. New nodes inherit their generator's cluster label either way. See `docs/USER_MANUAL.md`, section 5.1.
 
 ## Contents
 
@@ -21,14 +21,15 @@ presence and direction, not by the absolute numbers.
 | `data/reference_set_summaries.csv`, `data/control_set_summaries.csv` | one row per simulation (9 each): size, integrity check, hubs, tail, age profile, within-label citation fraction; cluster-aware citing on, and off (control) |
 | `data/conductance_bands.csv`, `data/conductance_bands_control.csv` | Leiden-readout conductance by cluster-size band, per run (36 rows each): cluster-aware citing on, and off (control); `node_coverage` is a fraction (0 to 1) |
 | `data/mechanism_check_population_output.txt`, `data/mechanism_check_agents_output.txt` | full output of the two checks that cluster-aware citing follows `theta` and `alpha` (see "Mechanism check") |
-| `labels/seed_comm_cpm{0.1,0.01,0.001}_v3.csv` | the three community-label files (`node_id,cluster_id`, 26,686 seed papers); `MD5SUMS.labels_and_scripts` has checksums |
+| `labels/seed_comm_cpm{0.1,0.01,0.001}_v3.csv` | the three community-label files (`node_id,cluster_id`, 26,686 seed nodes); `MD5SUMS.labels_and_scripts` has checksums |
 | `config/` | the configuration of one run (resolution 0.01) and the run scripts; the other eight differ only in the labels line |
-| `scripts/` | `make_seed_labels_v3.py` (labels), `run_summaries.py` and `run_summaries_control.py` (simulation summaries), `conductance_analysis.py` (conductance by size band), `mechanism_check_population.py` and `mechanism_check_agents.py` (the two mechanism checks) |
+| `figures/band_coverage.png` | stacked-bar summary of the band table below |
+| `scripts/` | `make_seed_labels_v3.py` (labels), `run_summaries.py` and `run_summaries_control.py` (simulation summaries), `conductance_analysis.py` (conductance by size band), `mechanism_check_population.py` and `plot_band_coverage.py` (figure), `mechanism_check_agents.py` (the two mechanism checks) |
 
 ## How the data were generated
 
 ### 1. Seed network and labels
-- Seed set `mf_seed_v3`: 26,686 papers and 273,490 citations (multifield seed; files `seed_nodelist_v3.csv`, `seed_edgelist_v3.csv`;
+- Seed set `mf_seed_v3`: 26,686 nodes and 273,490 citations (multifield seed; files `seed_nodelist_v3.csv`, `seed_edgelist_v3.csv`;
   MD5 `886ab386...` and `e0b8b92f...`). Recency table `multifield_reccount_v3.csv`, out-degree bag `multifield_out_degree_bag_v3.csv`
   (median out-degree 15), author-count bag `pubmed_2025_english_journals_v3.csv`. The inputs are described in `docs/inputs.tar.gz`
   (edgelist and tables are identical in content to the v2 seed).
@@ -36,7 +37,7 @@ presence and direction, not by the absolute numbers.
   (`CPMVertexPartition`, igraph 1.0.0) with `seed=1` at resolution 0.1, 0.01 and 0.001 (the 0.1 file is the pre-existing one, which
   the script reproduces exactly). Cluster statistics:
 
-| labels | clusters | singletons | clusters with ≥ 50 seed papers | seed papers in them | largest |
+| labels | clusters | singletons | clusters with ≥ 50 seed nodes | seed nodes in them | largest |
 |---|---|---|---|---|---|
 | 0.1 | 7,454 | 4,146 | 27 | 2,216 | 194 |
 | 0.01 | 5,602 | 4,496 | 57 | 12,027 | 1,314 |
@@ -50,7 +51,7 @@ presence and direction, not by the absolute numbers.
   storage; 32 OpenMP threads on one exclusive node, Illinois Campus Cluster `secondary` partition. Storage backend `ladybug`, database
   on node-local `/tmp`. `use_distributed=false`.
 - Configuration (`config/config_cpm0.01.ini`; `docs/USER_MANUAL.md` explains each option): `growth_rate=0.1`, `num_cycles=40`
-  (seed set grows to 1,208,027 papers); `alpha=-1` (random per agent, uniform on [0, 1]); `theta=50`; `unbinned_age_sampling=true`;
+  (seed set grows to 1,208,027 nodes); `alpha=-1` (random per agent, uniform on [0, 1]); `theta=50`; `unbinned_age_sampling=true`;
   Dirichlet weights 0.10 / 0.70 / 0.10 / 0.10 for preferential attachment, fitness, author count and author reputation, concentration 50;
   `same_year_citations=0.12`; `fully_random_citations=0.05`; fitness 1 to 1000, permanent (peak duration 1000, no lag);
   `non_random_generator_probability=0`; INSTAR options at their defaults. The only line that differs between the three label sets is
@@ -61,8 +62,8 @@ presence and direction, not by the absolute numbers.
 - Controls: nine further runs, `arcana/control_cpm{0.1,0.01,0.001}/r{0,1,2}`, jobs 12216239 to 12216254, identical to the baseline runs except `theta=1000000`
   (above the largest cluster, so cluster-aware citing never applies). Their multiscale readout was run in the same way.
 - `scripts/run_summaries.py` reads each run's `nodelist.csv` and `edgelist.csv` and writes `data/reference_set_summaries.csv`. Checks:
-  no duplicate edges, no self-citations, no citation from an older paper to a newer one, and edge count equals total in-degree
-  (column `integrity`). "Seed share of new citations" is the seed papers' in-degree gain divided by all new citations. "Within-cluster"
+  no duplicate edges, no self-citations, no citation from an older node to a newer one, and edge count equals total in-degree
+  (column `integrity`). "Seed share of new citations" is the seed nodes' in-degree gain divided by all new citations. "Within-cluster"
   is the share of agent citations whose source and target carry the same `cluster_id` (each run's own labels).
 
 ### 3. Multiscale readout
@@ -77,7 +78,7 @@ Conductance of a cluster = cut / min(volume, 2E − volume), with cut the number
 members' degrees, and E the number of edges; 0 means no edges leave and 1 means fully mixed with the rest (the definition used in
 `mesoscale_readout.py`).
 - **Bands.** Leiden-readout clusters are grouped by size into half-open bands [2, 10), [10, 100), [100, 1000) and [1000, ∞)
-  (a cluster of 10 papers is in the second band). Per run and band the table gives the number of clusters, papers, node coverage,
+  (a cluster of 10 nodes is in the second band). Per run and band the table gives the number of clusters, nodes, node coverage,
   median and quartiles of conductance, minimum, and the number below 0.5.
 
 Outcomes are read from this post-simulation clustering, which uses no labels. It does not depend on which clusters qualified for
@@ -102,7 +103,11 @@ labels play no part in how agents cite.
 
 ### Leiden readout (resolution 0.1) by cluster-size band (mean of three replicates)
 
-**Node coverage** in a band table is the percentage of all nodes (papers) in the network that sit in a Leiden cluster whose size is in that band: the papers in the band's clusters divided by all papers (about 1.21 million). It is not the share of clusters. Coverage across bands sums to about 100%, apart from papers left alone in a one-paper cluster.
+![Node coverage by cluster-size band, cluster-aware citing off and on](figures/band_coverage.png)
+
+*Node coverage by cluster-size band (Leiden CPM 0.1 on the output network), mean of three replicates. **Off** is ordinary citing (`theta=1000000`): a new node cites the direct neighbors of its generator node. **On** is cluster-aware citing (`theta=50`): when the generator's cluster has at least 50 members, the new node cites within that cluster. The label set that defines the clusters is the Leiden CPM resolution (0.001, 0.01 or 0.1) applied to the seed nodes; with citing off, labels play no part, so the nine control runs are pooled into one bar. `scripts/plot_band_coverage.py` draws the figure from `data/conductance_bands_control.csv`.*
+
+**Node coverage** in a band table is the percentage of all nodes in the network that sit in a Leiden cluster whose size is in that band: the nodes in the band's clusters divided by all nodes (about 1.21 million). It is not the share of clusters. Coverage across bands sums to about 100%, apart from nodes left alone in a one-node cluster.
 
 | input labels | band | on: clusters | on: node coverage | on: median conductance | off: clusters | off: node coverage | off: median conductance | clusters < 0.5 (on / off, all replicates) |
 |---|---|---|---|---|---|---|---|---|
@@ -116,28 +121,28 @@ labels play no part in how agents cite.
 | 0.001 | 10–99 | 13,312 | 21% | 0.869 | 50,283 | 62.4% | 0.820 | 0 / 0 |
 | 0.001 | 100–999 | 38 | 0.4% | 0.906 | 5 | 0.1% | 0.841 | 0 / 0 |
 
-No run, on or off, has a cluster of 1000 or more papers. The replicate-to-replicate sd of each median is 0.001 or less (0.027 for the 38
+No run, on or off, has a cluster of 1000 or more nodes. The replicate-to-replicate sd of each median is 0.001 or less (0.027 for the 38
 clusters at 0.001; 0.003 to 0.009 for the five control clusters).
 
 ## Reading the results, and limits
 - **Cluster-aware citing does what it is meant to** (see the mechanism check below): with it on, 40 to 44% of agent citations stay within a label,
   against 13 to 32% with it off.
-- **At the 0.1 readout it mostly moves papers out of dense small clusters.** With ordinary citing, 62% of papers sit in clusters of 10 to 99
-  papers (median conductance 0.820) and 37% in clusters of 2 to 9. With cluster-aware citing the 10 to 99 share falls to 43%, 27% and 21% for the
+- **At the 0.1 readout it mostly moves nodes out of dense small clusters.** With ordinary citing, 62% of nodes sit in clusters of 10 to 99
+  nodes (median conductance 0.820) and 37% in clusters of 2 to 9. With cluster-aware citing the 10 to 99 share falls to 43%, 27% and 21% for the
   0.1, 0.01 and 0.001 labels, and its median conductance is worse (0.847, 0.859, 0.869). A plausible reading, not tested here: agents that cite
   across a whole cluster rather than the generator's local neighborhood dilute the dense local structure CPM at 0.1 detects, and build
   coarser communities that this readout cannot report.
-- **The one gain is with the finest labels.** Labels at 0.1 produce 162 clusters of 100 to 999 papers at median conductance 0.716, against 5 clusters at 0.845
+- **The one gain is with the finest labels.** Labels at 0.1 produce 162 clusters of 100 to 999 nodes at median conductance 0.716, against 5 clusters at 0.845
   without cluster-aware citing. Coarser labels do not: 0.01 gives 134 clusters at 0.835 (the control's 5 at 0.835) and 0.001 gives 38 at 0.906 (control 0.841).
-- **Among the cluster-aware runs, finer labels read better** (more papers in 10 to 99 clusters, lower conductance in the 100 to 999 band),
-  while coarser labels give more within-label citing, a heavier agent tail and more uncited papers. Relative to ordinary citing, only the
+- **Among the cluster-aware runs, finer labels read better** (more nodes in 10 to 99 clusters, lower conductance in the 100 to 999 band),
+  while coarser labels give more within-label citing, a heavier agent tail and more uncited nodes. Relative to ordinary citing, only the
   0.1 labels improve any band.
 - The readout resolution is 0.1 on purpose. CPM at 0.1 reports a group as a cluster only if it is dense inside, so it can underestimate
-  community structure (communities of thousands of papers are too sparse to qualify, which is why no cluster reaches 1000 papers) but it
+  community structure (communities of thousands of nodes are too sparse to qualify, which is why no cluster reaches 1000 nodes) but it
   does not overestimate it. Conductance of small clusters still has a size floor: a small tidy clique cannot score low in a graph with
   this mean degree.
 - Limits: one seed set; three replicates per condition; one seeded clustering per resolution; one readout resolution. The
-  readout at 0.1 does not see communities of thousands of papers, so a readout at a coarser resolution could show a different balance.
+  readout at 0.1 does not see communities of thousands of nodes, so a readout at a coarser resolution could show a different balance.
 - The raw networks (`edgelist.csv`, `nodelist.csv`, about 450 MB per run) are kept on the cluster, not in this repository (see
   "Where the data live" below).
 
@@ -148,11 +153,11 @@ except for `theta=1000000` (so cluster-aware citing never applies). Generators a
 so cluster growth does not depend on how agents cite, and the pairs differ only in citing behavior. These checks use the labels on
 purpose: they test the mechanism, not the outcome.
 
-**Rule being tested** (`src/abm.cpp`, `src/neighborhood_search.cpp`). A new paper reserves one edge for its generator, possibly one for a
+**Rule being tested** (`src/abm.cpp`, `src/neighborhood_search.cpp`). A new node reserves one edge for its generator, possibly one for a
 same-year citation, and `floor(0.05 × out-degree)` edges for fully random citations. The remaining quota Q is split by the agent's own
 `alpha`: `n1 = floor(alpha × Q)` go to distance 1, the rest to distance 2. If the generator's cluster has at least `theta` members (seeds and
-agents together, published before the agent's year) and `alpha > 0`, distance 1 is the whole cluster (excluding the generator and papers of
-the current year) and distance 2 is restricted to papers outside the cluster. Otherwise distance 1 is the generator's direct neighbors.
+agents together, published before the agent's year) and `alpha > 0`, distance 1 is the whole cluster (excluding the generator and nodes of
+the current year) and distance 2 is restricted to nodes outside the cluster. Otherwise distance 1 is the generator's direct neighbors.
 
 ### Check 1, population level (`scripts/mechanism_check_population.py`; sample: replicate r0 of each label set, 6 networks)
 For every agent, the size of its cluster at birth is the number of cluster members with an earlier year. The within-cluster citation share
@@ -172,8 +177,8 @@ before the run.
 
 ### Check 2, agent level (`scripts/mechanism_check_agents.py`; random sample of 2,000 qualified and 2,000 unqualified agents, replicate r0)
 Per agent, the quota `n1 = floor(alpha × Q)` is computed from the nodelist (out-degree, `fully_random_citations`, the agent's `alpha`, and one
-same-year edge if the edgelist shows one). Observed: the number of its citations that land in its own cluster (earlier papers other than the
-generator), and the number that land in the generator's direct neighborhood (references of the generator plus earlier papers citing it,
+same-year edge if the edgelist shows one). Observed: the number of its citations that land in its own cluster (earlier nodes other than the
+generator), and the number that land in the generator's direct neighborhood (references of the generator plus earlier nodes citing it,
 a superset of what the code uses). Cartel agents, agents with `alpha = 0` and out-degree below 5 are excluded.
 
 | sample | citations into the cluster vs n1 | citations into the generator's neighborhood vs n1 |

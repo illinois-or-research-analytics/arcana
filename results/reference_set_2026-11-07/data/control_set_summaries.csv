@@ -1,4 +1,4 @@
-run,papers,edges,integrity,seed_share_new_pct,seeds_ge1000,agents_gt50k,agents_gt100k,agent_max,agent_top1pct_median,agent_top01pct_median,uncited_pct,age_1_4_pct,age_20_29_pct,within_cluster_pct,w_pa,w_fit
+run,nodes,edges,integrity,seed_share_new_pct,seeds_ge1000,agents_gt50k,agents_gt100k,agent_max,agent_top1pct_median,agent_top01pct_median,uncited_pct,age_1_4_pct,age_20_29_pct,within_cluster_pct,w_pa,w_fit
 control_cpm0.1/r0,1208027,22651176,True,5.038,40,2,0,85961,249.0,3103.0,14.412,30.745,10.079,13.413,0.1,0.7
 control_cpm0.1/r1,1208027,22689591,True,5.012,45,7,0,75566,249.0,2888.0,14.376,30.759,10.05,13.41,0.1,0.7
 control_cpm0.1/r2,1208027,22659949,True,5.032,49,5,0,59981,255.0,2955.0,14.423,30.767,10.055,13.409,0.1,0.7

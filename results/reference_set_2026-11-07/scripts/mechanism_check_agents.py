@@ -23,7 +23,7 @@ def run(kind, res):
         agg = df.groupby("src").agg(sy=("same_year", "sum"), k=("in_cl", "sum"), gen=("is_gen", "sum"), edges=("same_year", "size")).reindex(s.index).fillna(0)
         Q = s.out_degree - 1 - agg.sy - s.fully_random_citations
         n1 = np.floor(s.alpha * Q + 1e-9).clip(lower=0)
-        # 1-hop neighbours of the generator (superset): its references plus papers citing it that were published before the agent
+        # 1-hop neighbours of the generator (superset): its references plus nodes citing it that were published before the agent
         G = set(gen.values); e2 = ed[ed.source.isin(G) | ed.target.isin(G)]
         outn = e2[e2.source.isin(G)].groupby("source").target.apply(set).to_dict()
         e_in = e2[e2.target.isin(G)]; e_in = e_in[e_in.source.map(yr).values < 10**6]
