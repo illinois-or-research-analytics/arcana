@@ -4,6 +4,10 @@ Nine simulations: ARCANA main with three different community-label files (Leiden
 network), three replicates each. This folder holds the data behind the tables below, the inputs that are specific to this set, the
 scripts that produced the numbers, and a description of every step, so the tables can be checked or regenerated.
 
+**Weights.** These runs use the earlier default scoring weights (fit 0.70, the other three 0.10 each). The equal-weights set and a fit-weight sweep are in [weights_equal_2026-11-08](../weights_equal_2026-11-08/README.md), which is the reference set going forward; the two sets are not mixed.
+
+**Retention.** On 2026-11-08 the raw networks (`nodelist.csv` and `edgelist.csv`) of these runs were deleted from the cluster. The tables, readout results, configs and scripts remain; see "Where the data live" below.
+
 The runs are an abstract-model reference point for later sensitivity tests, not a calibration to a real network. Read patterns by
 presence and direction, not by the absolute numbers.
 
@@ -195,10 +199,7 @@ a sample of one replicate per label set; the neighborhood is a superset, which c
 
 ## Where the data live
 
-**These paths are on the Illinois Campus Cluster project storage. They may stop being valid after some time: the data-retention policy
-will apply, and raw networks may be deleted. The repository (tables, labels, configs, scripts and this description) is the durable
-record; the paths below are a convenience for as long as the files exist.** Every number in the tables can be regenerated from the
-steps above.
+**These paths are on the Illinois Campus Cluster project storage. They may stop being valid after some time: the data-retention policy will apply. On 2026-11-08 the raw networks (`nodelist.csv` and `edgelist.csv`) of every run listed here were deleted; the run folders (config, scripts, logs) and the readout results remain. A run takes about two minutes, so the networks can be regenerated, but the random seed is not logged: a regenerated network is statistically equivalent, not identical. The repository (tables, labels, configs, scripts and this description) is the durable record.**
 
 | what | path |
 |---|---|

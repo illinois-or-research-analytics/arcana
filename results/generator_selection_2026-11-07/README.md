@@ -5,6 +5,10 @@ Six simulations that change only how the generator node of a new node is chosen:
 only difference between a run and its control is the generator selection. The control is the `control_cpm0.01` set of the
 [reference set](../reference_set_2026-11-07/README.md).
 
+**Weights.** These runs use the earlier default scoring weights (fit 0.70, the other three 0.10 each). The equal-weights set and a fit-weight sweep are in [weights_equal_2026-11-08](../weights_equal_2026-11-08/README.md), which is the reference set going forward; the two sets are not mixed.
+
+**Retention.** On 2026-11-08 the raw networks (`nodelist.csv` and `edgelist.csv`) of these runs were deleted from the cluster. The tables, readout results, configs and scripts remain; see "Where the data live" below.
+
 Scope: the study measures the effect of a generator-selection rule on tails and on clustering, not how communities form or grow.
 
 ## Terms
@@ -105,11 +109,10 @@ band median is 0.001 or less (up to 0.010 for the five or six clusters in the 10
 - The `and` set was never empty (smallest size 197 nodes in any year of any replicate), so the fallback to uniform never applied.
 - Limits: three replicates; one seed set; one label set (inactive here); one probability (0.5); one set of thresholds (5 / 20 / 10); one
   readout resolution. With `pool = all` only; the pool options (`agents_eligible`, `agents`) were not run in this set.
-- The raw networks stay on the cluster (see below); they are not in this repository.
+- The raw networks were deleted from the cluster on 2026-11-08 (see below); they were never in this repository.
 
 ## Where the data live
-**These paths are on the Illinois Campus Cluster project storage and may stop being valid after some time: the data-retention policy will
-apply and raw networks may be deleted. The repository (tables, configs, scripts and this description) is the durable record.**
+**These paths are on the Illinois Campus Cluster project storage. They may stop being valid after some time: the data-retention policy will apply. On 2026-11-08 the raw networks (`nodelist.csv` and `edgelist.csv`) of every run listed here were deleted; the run folders (config, scripts, logs) and the readout results remain. A run takes about two minutes, so the networks can be regenerated, but the random seed is not logged: a regenerated network is statistically equivalent, not identical. The repository (tables, labels, configs, scripts and this description) is the durable record.**
 
 | what | path |
 |---|---|

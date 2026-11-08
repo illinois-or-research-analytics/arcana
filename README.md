@@ -52,8 +52,8 @@ generated.
 The effect of non-random generator selection (six further runs, with a uniform-generator control) is in
 [results/generator_selection_2026-11-07](results/generator_selection_2026-11-07/README.md).
 
-The same designs repeated with equal scoring weights (0.25 each; 18 runs), and a master table of all conditions at both weight settings, are in
-[results/weights_equal_2026-11-08](results/weights_equal_2026-11-08/README.md).
+The same designs repeated with equal scoring weights (0.25 each; 18 runs, the reference set going forward), with a master table and a one-factor-at-a-time study of the fit weight,
+`theta` and generator selection, are in [results/weights_equal_2026-11-08](results/weights_equal_2026-11-08/README.md). The two earlier folders above were run at the earlier default weights (fit 0.70).
 
 ## Data provenance
 

@@ -7,7 +7,7 @@ se = pd.read_csv("/projects/illinois/eng/cs/chackoge/mf_seed_v3/seed_edgelist_v3
 groups = [("citing on, labels 0.1", "baseline_cpm0.1"), ("citing on, labels 0.01", "baseline_cpm0.01"), ("citing on, labels 0.001", "baseline_cpm0.001"),
           ("citing off, uniform generators", "control_cpm0.01"), ("generators non-random, and", "nrg_and_t1m_cpm0.01"), ("generators non-random, or", "nrg_or_t1m_cpm0.01")]
 jobs = [(w, g, folder, r, A + ("weights_equal/" if w == "equal 0.25" else "") + f"{folder}/{r}/output/")
-        for w in ("original", "equal 0.25") for g, folder in groups for r in ("r0", "r1", "r2")]
+        for w in ("equal 0.25",) for g, folder in groups for r in ("r0", "r1", "r2")]
 
 def gini(x):
     x = np.sort(x.astype(np.float64)); n = len(x); c = np.cumsum(x)
