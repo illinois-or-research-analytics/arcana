@@ -99,6 +99,24 @@ Centre: equal weights, uniform generators, `theta` 50, labels 0.01. Replicate sd
   and within-label citing by 2.8 points against a 0.8-point fall. The top-10 share and the Gini do not interact. The replicate sd at `theta` 50 is 0.69 points for the top-1% share.
 - A plausible reason for the fit effect is that fitness is permanent, so high-fitness nodes keep being cited and low-fitness ones never are; this was not tested.
 
+## OFAT: the preferential-attachment weight (2026-11-09)
+
+The same design as the fit-weight study, applied to the in-degree (`pa`) weight: 0.10 and 0.90 with the other three weights equal, at `theta` 50 and 1,000,000, three replicates per arm (12 runs, jobs 12284758 to 12284769). The centre arms are the equal-weights runs above. Full table: [data/ofat_pa_table.md](data/ofat_pa_table.md); per-run data: `data/ofat_pa_run_summaries.csv`; configs `config/config_ofat_pa_{lo,hi}.ini` (the `theta` 1,000,000 arms change only the `theta` line).
+
+| theta | pa weight | top-1% share % | top-0.1% median | max in-degree |
+|---|---|---|---|---|
+| 50 | 0.10 | 37.0 | 2,119 | 27,204 |
+| 50 | 0.25 (centre) | 40.6 | 2,503 | not tabulated |
+| 50 | 0.90 | 55.1 | 4,085 | 65,922 |
+| 1,000,000 | 0.10 | 36.6 | 2,213 | 37,167 |
+| 1,000,000 | 0.25 (centre) | 39.5 | 2,480 | not tabulated |
+| 1,000,000 | 0.90 | 52.8 | 3,846 | 84,172 |
+
+- Raising the pa weight concentrates citations in the tail: at `theta` 50 the top 1% of nodes receive 55% of citations at pa 0.90 against 41% at the centre. Lowering it to 0.10 lowers the share only slightly.
+- The within-label citation share is set by `theta` (about 43% against 16%) and does not move with the pa weight.
+- With cluster-aware citing off (`theta` 1,000,000) the maximum in-degree is higher (84,000 against 66,000 at pa 0.90), so cluster-aware citing mutes the concentration slightly.
+- Replicate spread is small (top-1% share sd at most 0.31 points). Networks were wiped after the summaries; the cluster folder is `.../arcana/ofat_pa_2026-11-09/`.
+
 ## Reading the results, and limits
 - Cluster-aware citing, at equal weights, replaces mid-size clusters with fragments and a few larger ones. The 10 to 99 band falls from 62% to 21 to 44% of nodes, and the 100 to 999 band grows from 0.1% to 0.4 to 1.6%,
   with lower conductance at the finest labels. No cluster reaches 1,000 nodes in any run. The Leiden readout at resolution 0.1 is a conservative lower bound on community structure; coarser readouts were not run.
