@@ -26,6 +26,7 @@ Scope: the study measures how scoring weights, a citing rule and generator selec
 | `data/weights_summaries.csv`, `data/conductance_bands_weights.csv` | per-run simulation summaries and Leiden band measures of the 18 equal-weights runs (node coverage is a percentage) |
 | `data/ofat_run_summaries.csv` | per-run simulation summaries of the 9 OFAT runs |
 | `config/` | `config_equal_baseline_cpm0.01.ini` (the centre run) and `config_ofat_{fit_lo,fit_hi,nrg_and_theta50}.ini` (the `theta` 1,000,000 arms change only the `theta` line) |
+| `figures/top1pct_share_all_conditions.png` | top-1% share of citations for every condition tested |
 | `scripts/` | `weights_summaries.py`, `weights_bands.py`, `ofat_summaries.py` (cluster side), `make_master_table.py`, `make_ofat_table.py` |
 
 ## How the data were generated
@@ -116,6 +117,12 @@ The same design as the fit-weight study, applied to the in-degree (`pa`) weight:
 - The within-label citation share is set by `theta` (about 43% against 16%) and does not move with the pa weight.
 - With cluster-aware citing off (`theta` 1,000,000) the maximum in-degree is higher (84,000 against 66,000 at pa 0.90), so cluster-aware citing mutes the concentration slightly.
 - Replicate spread is small for the top-1% share (sd at most 0.31 points) but larger for the maximum in-degree (sd about 3,000 at pa 0.10 and at the centre), so the pa 0.10 versus centre difference in maximum in-degree is within the spread. Networks were wiped after the summaries; the cluster folder is `.../arcana/ofat_pa_2026-11-09/`.
+
+## All conditions: top-1% share
+
+![Top-1% share of citations for every condition tested](figures/top1pct_share_all_conditions.png)
+
+Figure: top-1% share of citations for every condition in this folder. Blue circles are cluster-aware citing on (`theta` 50), orange diamonds off (`theta` 1,000,000); dots are replicates, the line spans them, the number is the mean, and a hollow marker is a single run. Script: `scripts/plot_top1pct_all_conditions.py`.
 
 ## Reading the results, and limits
 - Cluster-aware citing, at equal weights, replaces mid-size clusters with fragments and a few larger ones. The 10 to 99 band falls from 62% to 21 to 44% of nodes, and the 100 to 999 band grows from 0.1% to 0.4 to 1.6%,
